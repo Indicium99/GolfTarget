@@ -28,15 +28,16 @@
       touch-action: none;
     }
     #map {
-      height: 75vh;
+      height: 72vh;
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
       touch-action: none;
+      position: relative;
     }
     #info-panel {
-      height: 25vh;
-      padding: 8px 12px;
+      height: 28vh;
+      padding: 10px 14px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
@@ -46,27 +47,29 @@
       z-index: 2000;
     }
     
-    /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA */
+    /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA (Z-INDEX NOPSTETTU) */
     .map-controls-right {
       position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1000;
+      top: 12px;
+      right: 12px;
+      z-index: 9999;
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 6px;
+      gap: 8px;
+      pointer-events: auto;
     }
     .gps-map-button {
-      background: rgba(15, 23, 42, 0.9);
-      border: 1.5px solid #38bdf8;
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid #38bdf8;
       color: #38bdf8;
-      padding: 7px 10px;
-      border-radius: 6px;
+      padding: 9px 12px;
+      border-radius: 8px;
       font-weight: bold;
-      font-size: 12px;
+      font-size: 14px;
       cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      -webkit-tap-highlight-color: transparent;
     }
     .gps-active {
       background: #0284c7;
@@ -74,24 +77,24 @@
       border-color: #ffffff;
     }
 
-    /* PELKÄT IKONIPAINIKKEET GPS-PAINIKKEEN ALLA */
+    /* IKONIPAINIKKEET GPS-PAINIKKEEN ALLA */
     .icon-buttons-group {
       display: flex;
-      gap: 6px;
+      gap: 8px;
     }
     .icon-btn {
-      width: 36px;
-      height: 36px;
+      width: 44px;
+      height: 44px;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 18px;
-      border-radius: 8px;
-      border: 1.5px solid #334155;
+      font-size: 22px;
+      border-radius: 10px;
+      border: 2px solid #334155;
       cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
-      background: rgba(15, 23, 42, 0.9);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      background: rgba(15, 23, 42, 0.95);
       -webkit-tap-highlight-color: transparent;
     }
     .btn-tee { border-color: #22c55e !important; }
@@ -102,47 +105,48 @@
       background: #a855f7; 
       color: white; 
       display: none; 
-      font-size: 11px;
+      font-size: 12px;
       font-weight: bold;
-      padding: 6px 8px;
-      border-radius: 6px;
+      padding: 7px 10px;
+      border-radius: 8px;
       border: none;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
     }
-    .active-mode { outline: 2.5px solid #ffffff; }
+    .active-mode { outline: 3px solid #ffffff; }
 
-    /* ALAPALKIN MITTARISTO */
+    /* SUUREMMAT FONTTIKOOT ALAPALKISSA */
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       background: #1e293b;
-      padding: 8px 10px;
-      border-radius: 8px;
+      padding: 10px 12px;
+      border-radius: 10px;
       border: 1px solid #334155;
     }
     .metric-line {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 1.05em;
+      font-size: 1.18em;
       font-weight: bold;
     }
     .metric-subline {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.9em;
+      font-size: 1.02em;
       color: #cbd5e1;
       border-top: 1px dashed #475569;
-      padding-top: 4px;
+      padding-top: 5px;
     }
-    .highlight-yellow { color: #facc15; font-size: 1.1em; }
-    .highlight-blue { color: #38bdf8; }
+    .highlight-yellow { color: #facc15; font-size: 1.25em; }
+    .highlight-blue { color: #38bdf8; font-size: 1.2em; }
     
-    .elevation-up { color: #4ade80; }
-    .elevation-down { color: #f87171; }
-    .wind-tailwind { color: #4ade80; }
-    .wind-headwind { color: #f87171; }
+    .elevation-up { color: #4ade80; font-weight: bold; }
+    .elevation-down { color: #f87171; font-weight: bold; }
+    .wind-tailwind { color: #4ade80; font-weight: bold; }
+    .wind-headwind { color: #f87171; font-weight: bold; }
 
     /* Tuulinuolityyli kartalla */
     .clean-wind-arrow-wrapper {
@@ -161,12 +165,12 @@
       background: rgba(15, 23, 42, 0.95);
       border: 2px solid #facc15;
       color: #facc15;
-      font-size: 14px;
+      font-size: 15px;
       font-weight: bold;
-      padding: 5px 8px;
+      padding: 6px 10px;
       border-radius: 8px;
       white-space: nowrap;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.7);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
       pointer-events: none;
       text-align: center;
       line-height: 1.35;
@@ -209,7 +213,7 @@
       <div class="metric-line">
         <span>Matka: <span id="dist-tee" class="highlight-blue">-</span> m</span>
         <span class="highlight-yellow">Plays like <span id="plays-like-val">-</span> m</span>
-        <span>⛳ Viheriölle: <span id="dist-green" style="color:#ef4444;">-</span> m</span>
+        <span>⛳ Viheriölle: <span id="dist-green" style="color:#ef4444; font-size:1.15em;">-</span> m</span>
       </div>
 
       <!-- RIVI 2: TUULI JA LÄMPÖTILA -->
@@ -226,9 +230,9 @@
     </div>
 
     <!-- ALARIVI -->
-    <div style="display:flex; justify-content:space-between; font-size: 0.8em; color: #94a3b8; font-family: monospace;">
+    <div style="display:flex; justify-content:space-between; font-size: 0.9em; color: #94a3b8; font-family: monospace;">
       <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
-      <span style="color:#facc15; font-weight: bold;">v1.0.9</span>
+      <span style="color:#facc15; font-weight: bold;">v1.1.0</span>
     </div>
   </div>
 
@@ -236,7 +240,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.0.9";
+    const APP_VERSION = "v1.1.0";
 
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
@@ -484,14 +488,14 @@
       const dirTo = (currentWindDirection + 180) % 360;
 
       const windSvgHtml = `
-        <div style="position: relative; width: 120px; height: 45px; display:flex; align-items:center; gap:6px;">
-          <svg class="wind-arrow-svg" width="34" height="34" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
+        <div style="position: relative; width: 130px; height: 50px; display:flex; align-items:center; gap:8px;">
+          <svg class="wind-arrow-svg" width="38" height="38" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
             <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
           </svg>
-          <div style="font-size: 11px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.15;">
+          <div style="font-size: 12px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.2;">
             💨 ${currentWindSpeed} m/s<br>
-            <span style="color:#facc15; font-size:10px;">(${currentWindGusts} m/s)</span>
+            <span style="color:#facc15; font-size:11px;">(${currentWindGusts} m/s)</span>
           </div>
         </div>
       `;
@@ -499,8 +503,8 @@
       const windIcon = L.divIcon({
         className: 'clean-wind-arrow-wrapper',
         html: windSvgHtml,
-        iconSize: [120, 45],
-        iconAnchor: [17, 22]
+        iconSize: [130, 50],
+        iconAnchor: [19, 25]
       });
 
       const teeWindPos = getDestinationPoint(teePosition[0], teePosition[1], 45, 270);
@@ -579,7 +583,7 @@
       document.getElementById('plays-like-val').innerText = playsLikeDistance;
       document.getElementById('dist-green').innerText = targetPosition ? distGreen : 0;
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (vaikutus ${tempImpactFormatted})`;
+      document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (${tempImpactFormatted})`;
       document.getElementById('sector-width').innerText = `${sectorWidthInner} m / ${sectorWidthOuter} m`;
     }
 
@@ -667,10 +671,10 @@
         className: 'length-badge-container',
         html: `<div class="length-badge">
                  <div>${distanceMeters} m</div>
-                 <div style="color:#ef4444; font-size:12px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
+                 <div style="color:#ef4444; font-size:13px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
                </div>`,
-        iconSize: [75, 42],
-        iconAnchor: [37, 21]
+        iconSize: [80, 46],
+        iconAnchor: [40, 23]
       });
 
       const badgeMarker = L.marker(badgePos, { icon: badgeIcon, interactive: false });
