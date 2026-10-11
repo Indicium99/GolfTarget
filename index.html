@@ -2,15 +2,15 @@
 <html lang="fi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Master Golf - Väylä- ja Korkeusmittari</title>
 
-<!-- LISÄÄ IPHONE-RIVIT TÄHÄN ALAPUOLELLE: -->
+  <!-- iOS / iPhone PWA -yhteensopivuus -->
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Master Golf">
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/6b/Golf_icon.png">
-  
+
   <!-- Leaflet CSS -->
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
@@ -22,12 +22,14 @@
       background-color: #0f172a;
       color: #ffffff;
       overflow: hidden;
+      touch-action: none; /* Estää iPhonen turhat pyyhkäisyeleet backgroundissa */
     }
     #map {
       height: 83vh;
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
+      touch-action: none;
     }
     #info-panel {
       height: 17vh;
@@ -51,17 +53,18 @@
       gap: 6px;
     }
     button {
-      padding: 6px 12px;
+      padding: 8px 14px;
       font-weight: bold;
-      font-size: 0.85em;
+      font-size: 0.88em;
       border: none;
-      border-radius: 4px;
+      border-radius: 6px;
       cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
     }
     .btn-tee { background-color: #22c55e; color: white; }
     .btn-green { background-color: #ef4444; color: white; }
     .btn-target { background-color: #38bdf8; color: black; }
-    .active { outline: 2px solid #facc15; }
+    .active { outline: 2.5px solid #facc15; }
     
     .metrics-grid {
       display: flex;
@@ -184,7 +187,8 @@
     let currentTempC = 20;
 
     const map = L.map('map', {
-      maxZoom: 21
+      maxZoom: 21,
+      tap: false // iOS Safari tap-konfliktien korjaus
     }).setView([60.260088, 24.680901], 17);
 
     // Google Maps Satelliittikerros
@@ -210,9 +214,7 @@
     const golfGreenIcon = L.divIcon({
       className: 'custom-green-icon',
       html: `<svg width="32" height="36" viewBox="0 0 32 36" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
-              <!-- Lipputanko -->
               <line x1="8" y1="4" x2="8" y2="34" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
-              <!-- Punainen lippu -->
               <path d="M8 4 L28 10 L8 16 Z" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
               <circle cx="8" cy="3" r="1.8" fill="#facc15"/>
             </svg>`,
@@ -621,15 +623,31 @@
       }
     }
 
-    // Hiiren liikuttaminen
-    map.on('mousemove', function(e) {
+    // YHDISTETTY HIIRI- JA KOSKETUSNÄYTTÖSEURANTA (iPHONELLE)
+    function handlePointerMove(latlng) {
       if (currentMode === 'target' && !isTargetLocked) {
-        targetPosition = [e.latlng.lat, e.latlng.lng];
+        targetPosition = [latlng.lat, latlng.lng];
         updateCalculations();
       }
+    }
+
+    map.on('mousemove', function(e) {
+      handlePointerMove(e.latlng);
     });
 
-    // Klikkaus
+    // iPhone / Kosketusnäyttöjen reaaliaikainen seuranta SORMEN LIIKKUESSA
+    const mapElement = document.getElementById('map');
+    
+    mapElement.addEventListener('touchmove', function(e) {
+      if (currentMode === 'target' && !isTargetLocked && e.touches.length === 1) {
+        const touch = e.touches[0];
+        const containerPoint = map.mouseEventToContainerPoint(touch);
+        const latlng = map.containerPointToLatLng(containerPoint);
+        handlePointerMove(latlng);
+      }
+    }, { passive: true });
+
+    // Klikkaus / Kosketusnäytön napautus
     map.on('click', function(e) {
       const coords = [e.latlng.lat, e.latlng.lng];
 
@@ -643,9 +661,9 @@
         renderWindOverlayIcons();
       } else if (currentMode === 'target') {
         if (!isTargetLocked) {
-          isTargetLocked = true;
+          isTargetLocked = true; // Ensimmäinen napautus lukitsee kohteeseen
         } else {
-          isTargetLocked = false;
+          isTargetLocked = false; // Toinen napautus vapauttaa seuranmaan sormea
           targetPosition = coords;
         }
       }
