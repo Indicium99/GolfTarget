@@ -46,44 +46,22 @@
       z-index: 2000;
     }
     
-    /* PIENEMMÄT PAINIKE-KONTROLLIT KARTAN VASEMMASSA REUNASSA */
-    .map-controls-left {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1000;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-    .map-controls-left button {
-      padding: 8px 10px;
-      font-weight: bold;
-      font-size: 12px;
-      border: 1.5px solid #334155;
-      border-radius: 6px;
-      cursor: pointer;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
-      text-align: left;
-      -webkit-tap-highlight-color: transparent;
-    }
-    .btn-tee { background: rgba(15, 23, 42, 0.9); color: #4ade80; border-color: #22c55e !important; }
-    .btn-green { background: rgba(15, 23, 42, 0.9); color: #f87171; border-color: #ef4444 !important; }
-    .btn-target { background: rgba(15, 23, 42, 0.9); color: #38bdf8; border-color: #38bdf8 !important; }
-    .btn-target.locked { background: #facc15 !important; color: #0f172a !important; border-color: #ffffff !important; }
-    .btn-gps-tee { background: #a855f7; color: white; display: none; }
-    .active-mode { outline: 2.5px solid #ffffff; }
-
-    /* GPS-Painike Kartalla Oikealla */
-    .gps-map-button {
+    /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA */
+    .map-controls-right {
       position: absolute;
       top: 10px;
       right: 10px;
       z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+    }
+    .gps-map-button {
       background: rgba(15, 23, 42, 0.9);
       border: 1.5px solid #38bdf8;
       color: #38bdf8;
-      padding: 8px 10px;
+      padding: 7px 10px;
       border-radius: 6px;
       font-weight: bold;
       font-size: 12px;
@@ -95,6 +73,42 @@
       color: #ffffff;
       border-color: #ffffff;
     }
+
+    /* PELKÄT IKONIPAINIKKEET GPS-PAINIKKEEN ALLA */
+    .icon-buttons-group {
+      display: flex;
+      gap: 6px;
+    }
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      border-radius: 8px;
+      border: 1.5px solid #334155;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+      background: rgba(15, 23, 42, 0.9);
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-tee { border-color: #22c55e !important; }
+    .btn-green { border-color: #ef4444 !important; }
+    .btn-target { border-color: #38bdf8 !important; }
+    .btn-target.locked { background: #facc15 !important; border-color: #ffffff !important; }
+    .btn-gps-tee { 
+      background: #a855f7; 
+      color: white; 
+      display: none; 
+      font-size: 11px;
+      font-weight: bold;
+      padding: 6px 8px;
+      border-radius: 6px;
+      border: none;
+    }
+    .active-mode { outline: 2.5px solid #ffffff; }
 
     /* ALAPALKIN MITTARISTO */
     .metrics-container {
@@ -142,20 +156,20 @@
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
     }
 
-    /* Pituusnäyttö */
+    /* SUURENNETTU PITUUSNÄYTTÖ SEKTORIN NUOLELLA */
     .length-badge {
       background: rgba(15, 23, 42, 0.95);
-      border: 1.5px solid #facc15;
+      border: 2px solid #facc15;
       color: #facc15;
-      font-size: 11px;
+      font-size: 14px;
       font-weight: bold;
-      padding: 3px 6px;
-      border-radius: 6px;
+      padding: 5px 8px;
+      border-radius: 8px;
       white-space: nowrap;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.6);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.7);
       pointer-events: none;
       text-align: center;
-      line-height: 1.3;
+      line-height: 1.35;
     }
 
     /* GPS-sijaintipallo */
@@ -175,19 +189,21 @@
 <body>
 
   <div id="map">
-    <!-- PIENET PAINIKKEET VASEMMASSA REUNASSA -->
-    <div class="map-controls-left">
-      <button id="btn-tee" class="btn-tee active-mode" onclick="setMode('tee')">1. Tii 📍</button>
-      <button id="btn-green" class="btn-green" onclick="setMode('green')">2. Viheriö ⛳</button>
-      <button id="btn-target" class="btn-target" onclick="toggleTargetMode()">3. Kohde 🎯</button>
+    <!-- OIKEAN YLÄKULMAN KONTROLLIT (GPS + LOGONAPIT) -->
+    <div class="map-controls-right">
+      <button class="gps-map-button" id="btn-gps-toggle" onclick="toggleGPS()">🎯 Oma Sijainti</button>
       <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS()">Aseta Tii GPS 📍</button>
+      
+      <div class="icon-buttons-group">
+        <button id="btn-tee" class="icon-btn btn-tee active-mode" onclick="setMode('tee')" title="Tiipaikka">📍</button>
+        <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green')" title="Viheriö">⛳</button>
+        <button id="btn-target" class="icon-btn btn-target" onclick="toggleTargetMode()" title="Kohde">🎯</button>
+      </div>
     </div>
-
-    <button class="gps-map-button" id="btn-gps-toggle" onclick="toggleGPS()">🎯 Oma Sijainti</button>
   </div>
 
   <div id="info-panel">
-    <!-- NÄYTÖLLE MAHTUVA MITTARISTO -->
+    <!-- MITTARISTO -->
     <div class="metrics-container">
       <!-- RIVI 1: MATKAT -->
       <div class="metric-line">
@@ -209,10 +225,10 @@
       </div>
     </div>
 
-    <!-- ALARIVI: KOKO VÄYLÄ & VERSIOTUNNISTE -->
+    <!-- ALARIVI -->
     <div style="display:flex; justify-content:space-between; font-size: 0.8em; color: #94a3b8; font-family: monospace;">
       <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
-      <span style="color:#facc15; font-weight: bold;">v1.0.7</span>
+      <span style="color:#facc15; font-weight: bold;">v1.0.9</span>
     </div>
   </div>
 
@@ -220,7 +236,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.0.7";
+    const APP_VERSION = "v1.0.9";
 
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
@@ -319,9 +335,9 @@
         targetBtn.classList.add('active-mode');
         if (isTargetLocked) {
           targetBtn.classList.add('locked');
-          targetBtn.innerText = "🔒 Lukittu 🎯";
+          targetBtn.innerText = "🔒";
         } else {
-          targetBtn.innerText = "3. Kohde 🎯";
+          targetBtn.innerText = "🎯";
         }
       }
     }
@@ -337,12 +353,11 @@
       if (currentMode !== 'target') {
         currentMode = 'target';
         isTargetLocked = false;
-        map.dragging.disable(); // Estetään kartan siirtely, kun sormella tähdätään
+        map.dragging.disable();
       } else {
-        // Jos ollaan jo target-tilassa, napautus vaihtaa lukituksen
         isTargetLocked = !isTargetLocked;
         if (isTargetLocked) {
-          map.dragging.enable(); // Lukittuna karttaa voi taas siirrellä vapaasti!
+          map.dragging.enable();
         } else {
           map.dragging.disable();
         }
@@ -469,19 +484,23 @@
       const dirTo = (currentWindDirection + 180) % 360;
 
       const windSvgHtml = `
-        <div style="position: relative; width: 60px; height: 35px; display:flex; align-items:center;">
-          <svg class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
+        <div style="position: relative; width: 120px; height: 45px; display:flex; align-items:center; gap:6px;">
+          <svg class="wind-arrow-svg" width="34" height="34" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
             <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
           </svg>
+          <div style="font-size: 11px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.15;">
+            💨 ${currentWindSpeed} m/s<br>
+            <span style="color:#facc15; font-size:10px;">(${currentWindGusts} m/s)</span>
+          </div>
         </div>
       `;
 
       const windIcon = L.divIcon({
         className: 'clean-wind-arrow-wrapper',
         html: windSvgHtml,
-        iconSize: [60, 35],
-        iconAnchor: [16, 16]
+        iconSize: [120, 45],
+        iconAnchor: [17, 22]
       });
 
       const teeWindPos = getDestinationPoint(teePosition[0], teePosition[1], 45, 270);
@@ -648,10 +667,10 @@
         className: 'length-badge-container',
         html: `<div class="length-badge">
                  <div>${distanceMeters} m</div>
-                 <div style="color:#ef4444; font-size:10px; font-weight:bold; margin-top:1px;">⛳ ${distGreen} m</div>
+                 <div style="color:#ef4444; font-size:12px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
                </div>`,
-        iconSize: [60, 36],
-        iconAnchor: [30, 18]
+        iconSize: [75, 42],
+        iconAnchor: [37, 21]
       });
 
       const badgeMarker = L.marker(badgePos, { icon: badgeIcon, interactive: false });
@@ -755,7 +774,7 @@
       } else if (currentMode === 'target') {
         if (!isTargetLocked) {
           isTargetLocked = true;
-          map.dragging.enable(); // Lukituksen jälkeen mahdollistetaan kartan siirto
+          map.dragging.enable();
         } else {
           isTargetLocked = false;
           map.dragging.disable();
