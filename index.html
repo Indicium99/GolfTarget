@@ -28,52 +28,75 @@
       touch-action: none;
     }
     #map {
-      height: 70vh;
+      height: 75vh;
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
       touch-action: none;
     }
     #info-panel {
-      height: 30vh;
+      height: 25vh;
       padding: 8px 12px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
       flex-direction: column;
-      justify-content: space-between;
+      justify-content: space-around;
       border-top: 2px solid #38bdf8;
       z-index: 2000;
     }
-    .panel-row {
+    
+    /* PIENEMMÄT PAINIKE-KONTROLLIT KARTAN VASEMMASSA REUNASSA */
+    .map-controls-left {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
       display: flex;
-      align-items: center;
-      justify-content: space-between;
+      flex-direction: column;
       gap: 6px;
     }
-    .mode-buttons {
-      display: flex;
-      gap: 6px;
-      width: 100%;
-    }
-    button {
-      flex: 1;
-      padding: 9px 4px;
+    .map-controls-left button {
+      padding: 8px 10px;
       font-weight: bold;
-      font-size: 0.9em;
-      border: none;
+      font-size: 12px;
+      border: 1.5px solid #334155;
       border-radius: 6px;
       cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+      text-align: left;
       -webkit-tap-highlight-color: transparent;
-      text-align: center;
     }
-    .btn-tee { background-color: #22c55e; color: white; }
-    .btn-green { background-color: #ef4444; color: white; }
-    .btn-target { background-color: #38bdf8; color: black; }
-    .btn-gps-tee { background-color: #a855f7; color: white; display: none; }
-    .active { outline: 3px solid #facc15; }
-    
-    /* ALAPALKIN SELKEÄ JA MAHTUVA RAKENNE */
+    .btn-tee { background: rgba(15, 23, 42, 0.9); color: #4ade80; border-color: #22c55e !important; }
+    .btn-green { background: rgba(15, 23, 42, 0.9); color: #f87171; border-color: #ef4444 !important; }
+    .btn-target { background: rgba(15, 23, 42, 0.9); color: #38bdf8; border-color: #38bdf8 !important; }
+    .btn-target.locked { background: #facc15 !important; color: #0f172a !important; border-color: #ffffff !important; }
+    .btn-gps-tee { background: #a855f7; color: white; display: none; }
+    .active-mode { outline: 2.5px solid #ffffff; }
+
+    /* GPS-Painike Kartalla Oikealla */
+    .gps-map-button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1.5px solid #38bdf8;
+      color: #38bdf8;
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-weight: bold;
+      font-size: 12px;
+      cursor: pointer;
+      box-shadow: 0 3px 8px rgba(0,0,0,0.5);
+    }
+    .gps-active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #ffffff;
+    }
+
+    /* ALAPALKIN MITTARISTO */
     .metrics-container {
       display: flex;
       flex-direction: column;
@@ -94,7 +117,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.88em;
+      font-size: 0.9em;
       color: #cbd5e1;
       border-top: 1px dashed #475569;
       padding-top: 4px;
@@ -106,28 +129,6 @@
     .elevation-down { color: #f87171; }
     .wind-tailwind { color: #4ade80; }
     .wind-headwind { color: #f87171; }
-
-    /* GPS-Painike Kartalla */
-    .gps-map-button {
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      z-index: 1000;
-      background: rgba(15, 23, 42, 0.9);
-      border: 2px solid #38bdf8;
-      color: #38bdf8;
-      padding: 8px 12px;
-      border-radius: 8px;
-      font-weight: bold;
-      font-size: 13px;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-    }
-    .gps-active {
-      background: #0284c7;
-      color: #ffffff;
-      border-color: #ffffff;
-    }
 
     /* Tuulinuolityyli kartalla */
     .clean-wind-arrow-wrapper {
@@ -141,12 +142,12 @@
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
     }
 
-    /* Pituusnäyttö 20 m kohdepisteen jälkeen */
+    /* Pituusnäyttö */
     .length-badge {
       background: rgba(15, 23, 42, 0.95);
-      border: 2px solid #facc15;
+      border: 1.5px solid #facc15;
       color: #facc15;
-      font-size: 12px;
+      font-size: 11px;
       font-weight: bold;
       padding: 3px 6px;
       border-radius: 6px;
@@ -157,7 +158,7 @@
       line-height: 1.3;
     }
 
-    /* Oma GPS-sijaintipallo */
+    /* GPS-sijaintipallo */
     .gps-user-marker {
       background: #38bdf8;
       border: 2px solid #ffffff;
@@ -174,19 +175,18 @@
 <body>
 
   <div id="map">
+    <!-- PIENET PAINIKKEET VASEMMASSA REUNASSA -->
+    <div class="map-controls-left">
+      <button id="btn-tee" class="btn-tee active-mode" onclick="setMode('tee')">1. Tii 📍</button>
+      <button id="btn-green" class="btn-green" onclick="setMode('green')">2. Viheriö ⛳</button>
+      <button id="btn-target" class="btn-target" onclick="toggleTargetMode()">3. Kohde 🎯</button>
+      <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS()">Aseta Tii GPS 📍</button>
+    </div>
+
     <button class="gps-map-button" id="btn-gps-toggle" onclick="toggleGPS()">🎯 Oma Sijainti</button>
   </div>
 
   <div id="info-panel">
-    <div class="panel-row">
-      <div class="mode-buttons">
-        <button id="btn-tee" class="btn-tee active" onclick="setMode('tee')">1. Tii</button>
-        <button id="btn-green" class="btn-green" onclick="setMode('green')">2. Viheriö</button>
-        <button id="btn-target" class="btn-target" onclick="setMode('target')">3. Kohde</button>
-        <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS()">📍 Tii GPS</button>
-      </div>
-    </div>
-
     <!-- NÄYTÖLLE MAHTUVA MITTARISTO -->
     <div class="metrics-container">
       <!-- RIVI 1: MATKAT -->
@@ -210,9 +210,9 @@
     </div>
 
     <!-- ALARIVI: KOKO VÄYLÄ & VERSIOTUNNISTE -->
-    <div class="panel-row" style="font-size: 0.8em; color: #94a3b8; font-family: monospace;">
+    <div style="display:flex; justify-content:space-between; font-size: 0.8em; color: #94a3b8; font-family: monospace;">
       <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
-      <span style="color:#facc15; font-weight: bold;">v1.0.6</span>
+      <span style="color:#facc15; font-weight: bold;">v1.0.7</span>
     </div>
   </div>
 
@@ -220,7 +220,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.0.6";
+    const APP_VERSION = "v1.0.7";
 
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
@@ -305,19 +305,49 @@
     let sectorBadgeGroup = L.layerGroup().addTo(map);
     let windMarkersGroup = L.layerGroup().addTo(map);
 
+    function updateModeButtonsUI() {
+      document.getElementById('btn-tee').classList.remove('active-mode');
+      document.getElementById('btn-green').classList.remove('active-mode');
+      const targetBtn = document.getElementById('btn-target');
+      targetBtn.classList.remove('active-mode', 'locked');
+
+      if (currentMode === 'tee') {
+        document.getElementById('btn-tee').classList.add('active-mode');
+      } else if (currentMode === 'green') {
+        document.getElementById('btn-green').classList.add('active-mode');
+      } else if (currentMode === 'target') {
+        targetBtn.classList.add('active-mode');
+        if (isTargetLocked) {
+          targetBtn.classList.add('locked');
+          targetBtn.innerText = "🔒 Lukittu 🎯";
+        } else {
+          targetBtn.innerText = "3. Kohde 🎯";
+        }
+      }
+    }
+
     function setMode(mode) {
       currentMode = mode;
-      document.getElementById('btn-tee').classList.remove('active');
-      document.getElementById('btn-green').classList.remove('active');
-      document.getElementById('btn-target').classList.remove('active');
-      document.getElementById(`btn-${mode}`).classList.add('active');
+      isTargetLocked = false;
+      map.dragging.enable();
+      updateModeButtonsUI();
+    }
 
-      if (mode === 'target') {
+    function toggleTargetMode() {
+      if (currentMode !== 'target') {
+        currentMode = 'target';
         isTargetLocked = false;
-        map.dragging.disable();
+        map.dragging.disable(); // Estetään kartan siirtely, kun sormella tähdätään
       } else {
-        map.dragging.enable();
+        // Jos ollaan jo target-tilassa, napautus vaihtaa lukituksen
+        isTargetLocked = !isTargetLocked;
+        if (isTargetLocked) {
+          map.dragging.enable(); // Lukittuna karttaa voi taas siirrellä vapaasti!
+        } else {
+          map.dragging.disable();
+        }
       }
+      updateModeButtonsUI();
     }
 
     function toggleGPS() {
@@ -355,7 +385,7 @@
 
             gpsBtn.classList.add('gps-active');
             gpsBtn.innerText = "📍 GPS Päällä";
-            setTeeBtn.style.display = "inline-block";
+            setTeeBtn.style.display = "block";
           },
           function(error) {
             alert("Sijainnin hakeminen epäonnistui.");
@@ -420,8 +450,8 @@
         const data = await response.json();
 
         if (data && data.current) {
-          currentWindSpeed = data.current.wind_speed_10m;
-          currentWindGusts = data.current.wind_gusts_10m;
+          currentWindSpeed = Math.round(data.current.wind_speed_10m * 10) / 10;
+          currentWindGusts = Math.round(data.current.wind_gusts_10m * 10) / 10;
           currentWindDirection = data.current.wind_direction_10m;
           currentTempC = Math.round(data.current.temperature_2m * 10) / 10;
 
@@ -517,11 +547,11 @@
       let windImpactFormatted = windDistanceImpact >= 0 ? `+${windDistanceImpact}m` : `${windDistanceImpact}m`;
 
       if (tailwindComponent > 0.2) {
-        windText = `<span class="wind-tailwind">🍃 Myötä ${roundedWindComp}m/s (${windImpactFormatted})</span>`;
+        windText = `<span class="wind-tailwind">🍃 Tuuli: ${currentWindSpeed} m/s (${currentWindGusts} m/s) ➔ Myötä (${windImpactFormatted})</span>`;
       } else if (tailwindComponent < -0.2) {
-        windText = `<span class="wind-headwind">💨 Vastat ${roundedWindComp}m/s (${windImpactFormatted})</span>`;
+        windText = `<span class="wind-headwind">💨 Tuuli: ${currentWindSpeed} m/s (${currentWindGusts} m/s) ➔ Vasta (${windImpactFormatted})</span>`;
       } else {
-        windText = `<span>🌬️ Sivutuuli (${currentWindSpeed}m/s)</span>`;
+        windText = `<span>🌬️ Tuuli: ${currentWindSpeed} m/s (${currentWindGusts} m/s) ➔ Sivutuuli</span>`;
       }
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
@@ -530,7 +560,7 @@
       document.getElementById('plays-like-val').innerText = playsLikeDistance;
       document.getElementById('dist-green').innerText = targetPosition ? distGreen : 0;
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (${tempImpactFormatted})`;
+      document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (vaikutus ${tempImpactFormatted})`;
       document.getElementById('sector-width').innerText = `${sectorWidthInner} m / ${sectorWidthOuter} m`;
     }
 
@@ -725,10 +755,13 @@
       } else if (currentMode === 'target') {
         if (!isTargetLocked) {
           isTargetLocked = true;
+          map.dragging.enable(); // Lukituksen jälkeen mahdollistetaan kartan siirto
         } else {
           isTargetLocked = false;
+          map.dragging.disable();
           targetPosition = coords;
         }
+        updateModeButtonsUI();
       }
       updateCalculations();
     });
