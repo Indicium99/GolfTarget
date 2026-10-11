@@ -15,25 +15,28 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
   <style>
-    body {
+    html, body {
       margin: 0;
       padding: 0;
+      width: 100%;
+      height: 100%;
       font-family: Arial, sans-serif;
       background-color: #0f172a;
       color: #ffffff;
       overflow: hidden;
+      position: fixed;
       touch-action: none;
     }
     #map {
-      height: 83vh;
+      height: 81vh;
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
       touch-action: none;
     }
     #info-panel {
-      height: 17vh;
-      padding: 8px 16px;
+      height: 19vh;
+      padding: 10px 16px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
@@ -54,9 +57,9 @@
       align-items: center;
     }
     button {
-      padding: 8px 12px;
+      padding: 9px 14px;
       font-weight: bold;
-      font-size: 0.85em;
+      font-size: 0.95em;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -71,13 +74,13 @@
     .metrics-grid {
       display: flex;
       gap: 15px;
-      font-size: 0.88em;
+      font-size: 0.98em;
     }
     .metric { font-weight: bold; color: #ffffff; }
     .coords-bar {
       font-family: monospace;
       color: #94a3b8;
-      font-size: 0.78em;
+      font-size: 0.85em;
       display: flex;
       gap: 15px;
     }
@@ -96,10 +99,10 @@
       background: rgba(15, 23, 42, 0.9);
       border: 1.5px solid #38bdf8;
       color: #38bdf8;
-      padding: 8px 12px;
+      padding: 10px 14px;
       border-radius: 8px;
       font-weight: bold;
-      font-size: 13px;
+      font-size: 14px;
       cursor: pointer;
       box-shadow: 0 4px 10px rgba(0,0,0,0.5);
       display: flex;
@@ -130,13 +133,13 @@
       border: 1px solid #38bdf8 !important;
       color: #ffffff !important;
       font-weight: bold;
-      font-size: 12px;
-      padding: 8px 12px;
-      border-radius: 6px;
-      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      font-size: 13.5px;
+      padding: 10px 14px;
+      border-radius: 8px;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.6);
       white-space: nowrap;
       pointer-events: none;
-      line-height: 1.6;
+      line-height: 1.65;
     }
 
     /* Pituusnäyttö 20 m kohdepisteen jälkeen */
@@ -144,9 +147,9 @@
       background: rgba(15, 23, 42, 0.95);
       border: 1.5px solid #facc15;
       color: #facc15;
-      font-size: 11px;
+      font-size: 12px;
       font-weight: bold;
-      padding: 4px 8px;
+      padding: 5px 10px;
       border-radius: 6px;
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0,0,0,0.6);
@@ -198,7 +201,7 @@
         <span>🎯 Kohde: <span id="coords-target">-</span></span>
         <span>⛳ Viheriö: <span id="coords-green">-</span></span>
       </div>
-      <div style="font-size: 0.82em; color: #cbd5e1;">
+      <div style="font-size: 0.9em; color: #cbd5e1;">
         Kokonaispituus (Tiipaikka ➔ Viheriö): <b><span id="dist-total" style="color:#38bdf8;">-</span> m</b>
       </div>
     </div>
@@ -208,7 +211,8 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    // Master Golf Väylä 1 Koordinaatit
+    const APP_VERSION = "v1.0.4"; // Sovelluksen versiotunniste
+
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
     let targetPosition = null;
@@ -220,11 +224,9 @@
     let currentElevationText = "-";
     let elevationTimeout = null;
 
-    // GPS Seuranta
     let watchId = null;
     let userMarker = null;
 
-    // Tuuli- ja lämpötilamuuttujat
     let currentWindSpeed = 0;
     let currentWindDirection = 0;
     let currentWindGusts = 0;
@@ -235,7 +237,6 @@
       tap: false
     }).setView([60.260088, 24.680901], 17);
 
-    // Google Maps Satelliittikerros
     L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
       maxZoom: 21,
       maxNativeZoom: 20,
@@ -243,7 +244,6 @@
       attribution: 'Map data &copy; Google'
     }).addTo(map);
 
-    // Golf-Tee Ikoni
     const golfTeeIcon = L.divIcon({
       className: 'custom-tee-icon',
       html: `<svg width="34" height="34" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));">
@@ -254,7 +254,6 @@
       iconAnchor: [17, 28]
     });
 
-    // VIHERIÖ-IKONI
     const golfGreenIcon = L.divIcon({
       className: 'custom-green-icon',
       html: `<svg width="32" height="36" viewBox="0 0 32 36" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
@@ -266,7 +265,6 @@
       iconAnchor: [8, 34]
     });
 
-    // Golf-kohdeikoni
     const golfTargetIcon = L.divIcon({
       className: 'custom-target-icon',
       html: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
@@ -279,7 +277,6 @@
       iconAnchor: [16, 16]
     });
 
-    // Oman Sijainnin Ikoni
     const userGpsIcon = L.divIcon({
       className: 'gps-user-marker',
       iconSize: [16, 16],
@@ -308,10 +305,12 @@
 
       if (mode === 'target') {
         isTargetLocked = false;
+        map.dragging.disable();
+      } else {
+        map.dragging.enable();
       }
     }
 
-    // GPS-toiminnot
     function toggleGPS() {
       const gpsBtn = document.getElementById('btn-gps-toggle');
       const setTeeBtn = document.getElementById('btn-set-tee-gps');
@@ -441,9 +440,9 @@
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
             <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
           </svg>
-          <div style="font-size: 11px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 3px #000; line-height: 1.2;">
+          <div style="font-size: 12px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 3px #000; line-height: 1.2;">
             💨 ${currentWindSpeed} m/s<br>
-            <span style="color:#facc15; font-size:10px;">(${currentWindGusts} m/s)</span>
+            <span style="color:#facc15; font-size:10.5px;">(${currentWindGusts} m/s)</span>
           </div>
         </div>
       `;
@@ -538,7 +537,8 @@
           📐 <b>Korkeusero:</b> ${currentElevationText}<br>
           🧭 <b>Lyöntisuunta:</b> ${shotBearing}° (${degreesToCardinal(shotBearing)}) &nbsp;|&nbsp; <b>Tuulen suunta:</b> ${windToDirection}° (${degreesToCardinal(windToDirection)})<br>
           ${windText}<br>
-          🌡️ <b>Lämpötila:</b> ${currentTempC}°C (vaikutus: <b>${tempImpactFormatted}</b>)
+          🌡️ <b>Lämpötila:</b> ${currentTempC}°C (vaikutus: <b>${tempImpactFormatted}</b>)<br>
+          <span style="color:#94a3b8; font-size:11px; font-weight:normal;">📌 Versio: ${APP_VERSION}</span>
         </div>
       `;
 
@@ -634,10 +634,10 @@
         className: 'length-badge-container',
         html: `<div class="length-badge">
                  <div>${distanceMeters} m</div>
-                 <div style="color:#ef4444; font-size:10px; font-weight:bold; margin-top:1px;">⛳ ${distGreen} m</div>
+                 <div style="color:#ef4444; font-size:11px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
                </div>`,
-        iconSize: [60, 36],
-        iconAnchor: [30, 18]
+        iconSize: [66, 40],
+        iconAnchor: [33, 20]
       });
 
       const badgeMarker = L.marker(badgePos, { icon: badgeIcon, interactive: false });
@@ -742,12 +742,13 @@
     
     mapElement.addEventListener('touchmove', function(e) {
       if (currentMode === 'target' && !isTargetLocked && e.touches.length === 1) {
+        e.preventDefault();
         const touch = e.touches[0];
         const containerPoint = map.mouseEventToContainerPoint(touch);
         const latlng = map.containerPointToLatLng(containerPoint);
         handlePointerMove(latlng);
       }
-    }, { passive: true });
+    }, { passive: false });
 
     map.on('click', function(e) {
       const coords = [e.latlng.lat, e.latlng.lng];
