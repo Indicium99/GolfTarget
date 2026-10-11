@@ -28,67 +28,87 @@
       touch-action: none;
     }
     #map {
-      height: 81vh;
+      height: 72vh;
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
       touch-action: none;
+      transition: transform 0.3s ease-out; /* Pehmeä kartan pyöritys */
     }
     #info-panel {
-      height: 19vh;
-      padding: 10px 16px;
+      height: 28vh;
+      padding: 10px 14px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
       flex-direction: column;
-      justify-content: space-around;
-      border-top: 1px solid #334155;
+      justify-content: space-between;
+      border-top: 2px solid #38bdf8;
+      z-index: 2000;
+      position: relative;
     }
     .panel-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 10px;
+      gap: 8px;
     }
     .mode-buttons {
       display: flex;
       gap: 6px;
-      align-items: center;
+      width: 100%;
     }
     button {
-      padding: 9px 14px;
+      flex: 1;
+      padding: 10px 6px;
       font-weight: bold;
-      font-size: 0.95em;
+      font-size: 1em;
       border: none;
       border-radius: 6px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
+      text-align: center;
     }
     .btn-tee { background-color: #22c55e; color: white; }
     .btn-green { background-color: #ef4444; color: white; }
     .btn-target { background-color: #38bdf8; color: black; }
     .btn-gps-tee { background-color: #a855f7; color: white; display: none; }
-    .active { outline: 2.5px solid #facc15; }
+    .active { outline: 3px solid #facc15; }
     
-    .metrics-grid {
+    /* SUUREMMAT FONTTIKOOT ALAPALKISSA */
+    .metrics-container {
       display: flex;
-      gap: 15px;
-      font-size: 0.98em;
+      flex-direction: column;
+      gap: 6px;
+      background: #1e293b;
+      padding: 8px 12px;
+      border-radius: 8px;
+      border: 1px solid #334155;
     }
-    .metric { font-weight: bold; color: #ffffff; }
-    .coords-bar {
-      font-family: monospace;
-      color: #94a3b8;
-      font-size: 0.85em;
+    .metric-line {
       display: flex;
-      gap: 15px;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 1.1em;
+      font-weight: bold;
     }
-    .elevation-up { color: #4ade80; font-weight: bold; }
-    .elevation-down { color: #f87171; font-weight: bold; }
-    .wind-tailwind { color: #4ade80; font-weight: bold; }
-    .wind-headwind { color: #f87171; font-weight: bold; }
-    .plays-like-value { color: #facc15; font-weight: bold; }
+    .metric-subline {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 0.95em;
+      color: #cbd5e1;
+      border-top: 1px dashed #475569;
+      padding-top: 4px;
+      margin-top: 2px;
+    }
+    .highlight-yellow { color: #facc15; font-size: 1.15em; }
+    .highlight-blue { color: #38bdf8; }
+    
+    .elevation-up { color: #4ade80; }
+    .elevation-down { color: #f87171; }
+    .wind-tailwind { color: #4ade80; }
+    .wind-headwind { color: #f87171; }
 
     /* GPS-Painike Kartalla */
     .gps-map-button {
@@ -97,17 +117,14 @@
       right: 12px;
       z-index: 1000;
       background: rgba(15, 23, 42, 0.9);
-      border: 1.5px solid #38bdf8;
+      border: 2px solid #38bdf8;
       color: #38bdf8;
       padding: 10px 14px;
       border-radius: 8px;
       font-weight: bold;
-      font-size: 14px;
+      font-size: 15px;
       cursor: pointer;
       box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-      display: flex;
-      align-items: center;
-      gap: 6px;
     }
     .gps-active {
       background: #0284c7;
@@ -115,7 +132,7 @@
       border-color: #ffffff;
     }
 
-    /* Tuulinuolityyli */
+    /* Tuulinuolityyli kartalla */
     .clean-wind-arrow-wrapper {
       background: transparent !important;
       border: none !important;
@@ -127,35 +144,20 @@
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
     }
 
-    /* Kohde-etiketti sivuun sijoitettuna */
-    .target-label {
-      background: rgba(15, 23, 42, 0.95) !important;
-      border: 1px solid #38bdf8 !important;
-      color: #ffffff !important;
-      font-weight: bold;
-      font-size: 13.5px;
-      padding: 10px 14px;
-      border-radius: 8px;
-      box-shadow: 0 4px 14px rgba(0,0,0,0.6);
-      white-space: nowrap;
-      pointer-events: none;
-      line-height: 1.65;
-    }
-
     /* Pituusnäyttö 20 m kohdepisteen jälkeen */
     .length-badge {
       background: rgba(15, 23, 42, 0.95);
-      border: 1.5px solid #facc15;
+      border: 2px solid #facc15;
       color: #facc15;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: bold;
-      padding: 5px 10px;
+      padding: 4px 8px;
       border-radius: 6px;
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0,0,0,0.6);
       pointer-events: none;
       text-align: center;
-      line-height: 1.35;
+      line-height: 1.3;
     }
 
     /* Oma GPS-sijaintipallo */
@@ -181,29 +183,35 @@
   <div id="info-panel">
     <div class="panel-row">
       <div class="mode-buttons">
-        <button id="btn-tee" class="btn-tee active" onclick="setMode('tee')">1. Tiipaikka</button>
+        <button id="btn-tee" class="btn-tee active" onclick="setMode('tee')">1. Tii</button>
         <button id="btn-green" class="btn-green" onclick="setMode('green')">2. Viheriö</button>
-        <button id="btn-target" class="btn-target" onclick="setMode('target')">3. Mittaa Kohde & Sektori</button>
-        <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS()">Aseta Tii tähän 📍</button>
-      </div>
-
-      <div class="metrics-grid">
-        <span>Tiiltä kohteeseen: <span id="dist-tee" class="metric">-</span> m</span>
-        <span>Sektori (14,81% / 22,22%): <span id="sector-width-inner" class="metric">-</span> m / <span id="sector-width-outer" class="metric">-</span> m</span>
-        <span>Kohteesta viheriölle: <span id="dist-green" class="metric">-</span> m</span>
-        <span>Korkeusero: <span id="elevation-diff" class="metric">-</span></span>
+        <button id="btn-target" class="btn-target" onclick="setMode('target')">3. Kohde</button>
+        <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS()">📍 Tii GPS</button>
       </div>
     </div>
 
-    <div class="panel-row">
-      <div class="coords-bar">
-        <span>📍 Tiipaikka: <span id="coords-tee">-</span></span>
-        <span>🎯 Kohde: <span id="coords-target">-</span></span>
-        <span>⛳ Viheriö: <span id="coords-green">-</span></span>
+    <!-- SUURET JA SELKEÄT MITTARIT ALAPALKISSA -->
+    <div class="metrics-container">
+      <!-- RIVI 1: PÄÄMATKAT -->
+      <div class="metric-line">
+        <span>Matka: <span id="dist-tee" class="highlight-blue">-</span> m</span>
+        <span class="highlight-yellow">Plays like <span id="plays-like-val">-</span> m</span>
+        <span>⛳ Viheriölle: <span id="dist-green" style="color:#ef4444;">-</span> m</span>
       </div>
-      <div style="font-size: 0.9em; color: #cbd5e1;">
-        Kokonaispituus (Tiipaikka ➔ Viheriö): <b><span id="dist-total" style="color:#38bdf8;">-</span> m</b>
+
+      <!-- RIVI 2: SÄÄ & SUUNNAT -->
+      <div class="metric-subline">
+        <span id="wind-text">💨 Tuuli: -</span>
+        <span id="temp-text">🌡️ -°C</span>
+        <span>Korkeus: <span id="elevation-diff">-</span></span>
+        <span>Sektori: <span id="sector-width">-</span> m</span>
       </div>
+    </div>
+
+    <!-- ALARIVI: VERSIONALAMERKKI & KOORDINAATIT -->
+    <div class="panel-row" style="font-size: 0.82em; color: #94a3b8; font-family: monospace;">
+      <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
+      <span style="color:#facc15; font-weight: bold;">v1.0.5</span>
     </div>
   </div>
 
@@ -211,7 +219,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.0.4"; // Sovelluksen versiotunniste
+    const APP_VERSION = "v1.0.5";
 
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
@@ -283,8 +291,8 @@
       iconAnchor: [8, 8]
     });
 
-    let teeMarker = L.marker(teePosition, {icon: golfTeeIcon, draggable: true}).addTo(map).bindPopup("Tiipaikka (Väylä 1)");
-    let greenMarker = L.marker(greenPosition, {icon: golfGreenIcon, draggable: true}).addTo(map).bindPopup("Viheriö (Väylä 1)");
+    let teeMarker = L.marker(teePosition, {icon: golfTeeIcon, draggable: true}).addTo(map).bindPopup("Tiipaikka");
+    let greenMarker = L.marker(greenPosition, {icon: golfGreenIcon, draggable: true}).addTo(map).bindPopup("Viheriö");
     let targetMarker = null;
 
     let centerLine = null;
@@ -309,6 +317,12 @@
       } else {
         map.dragging.enable();
       }
+    }
+
+    // KARTAN AUTOMAATTINEN PYÖRITYS (Lyöntisuunta osoittaa aina ylöspäin)
+    function rotateMapToShotBearing(bearing) {
+      const mapContainer = document.getElementById('map');
+      mapContainer.style.transform = `rotate(${-bearing}deg)`;
     }
 
     function toggleGPS() {
@@ -349,7 +363,7 @@
             setTeeBtn.style.display = "inline-block";
           },
           function(error) {
-            alert("Sijainnin hakeminen epäonnistui. Varmista, että selaimella on sijaintilupa.");
+            alert("Sijainnin hakeminen epäonnistui.");
             gpsBtn.innerText = "🎯 Oma Sijainti";
           },
           { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
@@ -435,23 +449,19 @@
       const dirTo = (currentWindDirection + 180) % 360;
 
       const windSvgHtml = `
-        <div style="position: relative; width: 100px; height: 50px; display:flex; align-items:center; gap:8px;">
-          <svg class="wind-arrow-svg" width="40" height="40" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
+        <div style="position: relative; width: 80px; height: 40px; display:flex; align-items:center; gap:6px;">
+          <svg class="wind-arrow-svg" width="36" height="36" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
             <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
           </svg>
-          <div style="font-size: 12px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 3px #000; line-height: 1.2;">
-            💨 ${currentWindSpeed} m/s<br>
-            <span style="color:#facc15; font-size:10.5px;">(${currentWindGusts} m/s)</span>
-          </div>
         </div>
       `;
 
       const windIcon = L.divIcon({
         className: 'clean-wind-arrow-wrapper',
         html: windSvgHtml,
-        iconSize: [100, 50],
-        iconAnchor: [20, 25]
+        iconSize: [80, 40],
+        iconAnchor: [18, 20]
       });
 
       const teeWindPos = getDestinationPoint(teePosition[0], teePosition[1], 45, 270);
@@ -479,32 +489,35 @@
             const diffElem = document.getElementById('elevation-diff');
             if (currentElevationDiffMeters > 0) {
               currentElevationText = `+${currentElevationDiffMeters} m`;
-              diffElem.innerHTML = `<span class="elevation-up">+${currentElevationDiffMeters} m</span>`;
+              diffElem.innerHTML = `<span class="elevation-up">+${currentElevationDiffMeters}m</span>`;
             } else if (currentElevationDiffMeters < 0) {
               currentElevationText = `${currentElevationDiffMeters} m`;
-              diffElem.innerHTML = `<span class="elevation-down">${currentElevationDiffMeters} m</span>`;
+              diffElem.innerHTML = `<span class="elevation-down">${currentElevationDiffMeters}m</span>`;
             } else {
               currentElevationText = `0 m`;
-              diffElem.innerText = "0 m";
+              diffElem.innerText = "0m";
             }
-            updateTargetTooltip();
+            updateBottomPanelMetrics();
           }
         } catch (err) {
-          currentElevationText = "Ei saatavilla";
-          document.getElementById('elevation-diff').innerText = "Ei saatavilla";
+          document.getElementById('elevation-diff').innerText = "-";
         }
       }, 250);
     }
 
-    function updateTargetTooltip() {
-      if (!targetMarker || !targetPosition) return;
-
-      const distTee = calculateDistance(teePosition, targetPosition);
+    // PÄIVITETÄÄN KAIKKI METRIKIT SUORAAN ALAPALKKIIN
+    function updateBottomPanelMetrics() {
+      const activeTarget = targetPosition || greenPosition;
+      const distTee = calculateDistance(teePosition, activeTarget);
+      const distGreen = targetPosition ? calculateDistance(targetPosition, greenPosition) : 0;
       const sectorWidthInner = Math.round(distTee * 0.1481 * 10) / 10;
       const sectorWidthOuter = Math.round(distTee * 0.2222 * 10) / 10;
       
-      const shotBearing = getBearing(teePosition, targetPosition);     
+      const shotBearing = getBearing(teePosition, activeTarget);     
       const windToDirection = (currentWindDirection + 180) % 360;      
+
+      // Pyöritetään karttaa automaattisesti lyöntisuuntaan
+      rotateMapToShotBearing(shotBearing);
 
       const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
@@ -518,36 +531,25 @@
       const playsLikeDistance = Math.round(distTee + windDistanceImpact + tempDistanceImpact + elevationImpact);
 
       let windText = "";
-      let windImpactFormatted = windDistanceImpact >= 0 ? `+${windDistanceImpact} m` : `${windDistanceImpact} m`;
+      let windImpactFormatted = windDistanceImpact >= 0 ? `+${windDistanceImpact}m` : `${windDistanceImpact}m`;
 
       if (tailwindComponent > 0.2) {
-        windText = `<span class="wind-tailwind">🍃 Myötätuuli: ${roundedWindComp} m/s</span> (${windImpactFormatted})`;
+        windText = `<span class="wind-tailwind">🍃 Myötä ${roundedWindComp}m/s (${windImpactFormatted})</span>`;
       } else if (tailwindComponent < -0.2) {
-        windText = `<span class="wind-headwind">💨 Vastatuuli: ${roundedWindComp} m/s</span> (${windImpactFormatted})`;
+        windText = `<span class="wind-headwind">💨 Vastat ${roundedWindComp}m/s (${windImpactFormatted})</span>`;
       } else {
-        windText = `<span>🌬️ Sivutuuli / tyyni (0 m)</span>`;
+        windText = `<span>🌬️ Sivutuuli (${currentWindSpeed}m/s)</span>`;
       }
 
-      const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact} m` : `${tempDistanceImpact} m`;
+      const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
-      const content = `
-        <div>
-          📏 <b>Matka kohteeseen:</b> ${distTee} m &nbsp;➔&nbsp; <span class="plays-like-value">Plays like ${playsLikeDistance} m</span><br>
-          ↔️ <b>Sektorin leveys:</b> ${sectorWidthInner} m / ${sectorWidthOuter} m<br>
-          📐 <b>Korkeusero:</b> ${currentElevationText}<br>
-          🧭 <b>Lyöntisuunta:</b> ${shotBearing}° (${degreesToCardinal(shotBearing)}) &nbsp;|&nbsp; <b>Tuulen suunta:</b> ${windToDirection}° (${degreesToCardinal(windToDirection)})<br>
-          ${windText}<br>
-          🌡️ <b>Lämpötila:</b> ${currentTempC}°C (vaikutus: <b>${tempImpactFormatted}</b>)<br>
-          <span style="color:#94a3b8; font-size:11px; font-weight:normal;">📌 Versio: ${APP_VERSION}</span>
-        </div>
-      `;
-
-      targetMarker.bindTooltip(content, {
-        permanent: true,
-        direction: 'right',
-        className: 'target-label',
-        offset: [150, -40]
-      }).openTooltip();
+      // Päivitetään alapaneelin tekstikentät
+      document.getElementById('dist-tee').innerText = distTee;
+      document.getElementById('plays-like-val').innerText = playsLikeDistance;
+      document.getElementById('dist-green').innerText = targetPosition ? distGreen : 0;
+      document.getElementById('wind-text').innerHTML = windText;
+      document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (${tempImpactFormatted})`;
+      document.getElementById('sector-width').innerText = `${sectorWidthInner}/${sectorWidthOuter}`;
     }
 
     function createArcSectorPolylineByBearing(teePos, distTee, bearing, ratio, color, dashArray) {
@@ -648,9 +650,6 @@
       const totalDist = calculateDistance(teePosition, greenPosition);
       document.getElementById('dist-total').innerText = totalDist;
 
-      document.getElementById('coords-tee').innerText = `${teePosition[0].toFixed(5)}, ${teePosition[1].toFixed(5)}`;
-      document.getElementById('coords-green').innerText = `${greenPosition[0].toFixed(5)}, ${greenPosition[1].toFixed(5)}`;
-
       if (outerSectorPolyline) map.removeLayer(outerSectorPolyline);
       if (innerSectorPolyline) map.removeLayer(innerSectorPolyline);
 
@@ -662,18 +661,7 @@
       }
 
       if (targetPosition) {
-        document.getElementById('coords-target').innerText = `${targetPosition[0].toFixed(5)}, ${targetPosition[1].toFixed(5)}`;
-
         const distTee = calculateDistance(teePosition, targetPosition);
-        const distGreen = calculateDistance(targetPosition, greenPosition);
-        
-        const sectorWidthInner = Math.round(distTee * 0.1481 * 10) / 10;
-        const sectorWidthOuter = Math.round(distTee * 0.2222 * 10) / 10;
-
-        document.getElementById('dist-tee').innerText = distTee;
-        document.getElementById('sector-width-inner').innerText = sectorWidthInner;
-        document.getElementById('sector-width-outer').innerText = sectorWidthOuter;
-        document.getElementById('dist-green').innerText = distGreen;
 
         if (!targetMarker) {
           targetMarker = L.marker(targetPosition, {icon: golfTargetIcon}).addTo(map);
@@ -681,7 +669,7 @@
           targetMarker.setLatLng(targetPosition);
         }
 
-        updateTargetTooltip();
+        updateBottomPanelMetrics();
         fetchElevationDifferenceDebounced(teePosition, targetPosition);
 
         const bearing = getBearing(teePosition, targetPosition);
@@ -694,19 +682,10 @@
         drawLengthBadgeAtArrowExtension(teePosition, targetPosition, distTee, bearing);
 
       } else {
-        document.getElementById('coords-target').innerText = "-";
-        document.getElementById('dist-tee').innerText = "-";
-        document.getElementById('sector-width-inner').innerText = "-";
-        document.getElementById('sector-width-outer').innerText = "-";
-        document.getElementById('dist-green').innerText = "-";
-        document.getElementById('elevation-diff').innerText = "-";
-
-        if (targetMarker) {
-          targetMarker.unbindTooltip();
-        }
-
         const defaultDistance = 270;
         const bearing = getBearing(teePosition, greenPosition);
+
+        updateBottomPanelMetrics();
 
         outerSectorPolyline = createArcSectorPolylineByBearing(teePosition, defaultDistance, bearing, 0.2222, '#ffffff', null).addTo(map);
         innerSectorPolyline = createArcSectorPolylineByBearing(teePosition, defaultDistance, bearing, 0.1481, '#ffffff', '5, 5').addTo(map);
