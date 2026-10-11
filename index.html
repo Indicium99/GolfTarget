@@ -187,7 +187,6 @@
       <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS(event)">Aseta Tii GPS 📍</button>
 
       <div class="icon-buttons-group">
-        <!-- ERILLAINEN GPS-IKONI (KOMPASSI) -->
         <button id="btn-gps-toggle" class="icon-btn btn-gps" onclick="toggleGPS(event)" title="Oma Sijainti">🧭</button>
         <button id="btn-tee" class="icon-btn btn-tee active-mode" onclick="setMode('tee', event)" title="Tiipaikka">📍</button>
         <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green', event)" title="Viheriö">⛳</button>
@@ -201,7 +200,6 @@
       <div class="metric-line">
         <span>Matka: <span id="dist-tee" class="highlight-blue">-</span> m</span>
         <span class="highlight-yellow">Plays like <span id="plays-like-val">-</span> m</span>
-        <!-- VIHERIÖLLE-MATKA VALKOISEKSI -->
         <span>⛳ Viheriölle: <span id="dist-green" class="highlight-white">-</span> m</span>
       </div>
 
@@ -218,7 +216,7 @@
 
     <div style="display:flex; justify-content:space-between; font-size: 14px; color: #94a3b8; font-family: monospace;">
       <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
-      <span style="color:#facc15; font-weight: bold;">v1.1.6</span>
+      <span style="color:#facc15; font-weight: bold;">v1.1.8</span>
     </div>
   </div>
 
@@ -226,12 +224,12 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.1.6";
+    const APP_VERSION = "v1.1.8";
 
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
     let targetPosition = null;
-    let lockedTargetDistance = 0; // Lukittu pituus
+    let lockedTargetDistance = 0;
     let userGPSPosition = null;
 
     let isTargetLocked = false;
@@ -258,6 +256,10 @@
     const controlsContainer = document.getElementById('map-controls');
     L.DomEvent.disableClickPropagation(controlsContainer);
     L.DomEvent.disableScrollPropagation(controlsContainer);
+
+    ['click', 'dblclick', 'mousedown', 'touchstart', 'touchend'].forEach(evt => {
+      controlsContainer.addEventListener(evt, e => e.stopPropagation(), { passive: false });
+    });
 
     L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
       maxZoom: 21,
@@ -341,7 +343,10 @@
     }
 
     function setMode(mode, e) {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+      }
       currentMode = mode;
       isTargetLocked = false;
       map.dragging.enable();
@@ -349,7 +354,10 @@
     }
 
     function toggleTargetMode(e) {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+      }
       if (currentMode !== 'target') {
         currentMode = 'target';
         isTargetLocked = false;
@@ -357,10 +365,9 @@
       } else {
         isTargetLocked = !isTargetLocked;
         if (isTargetLocked) {
-          // LUKITAAN PITUUS TÄLLÄ HETKELLÄ OLEVAAN PITUUTEEN
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(teePosition, activeTarget);
-          map.dragging.disable(); // Pidetään kosketusohjaus sektorin pyörittämiselle
+          map.dragging.disable();
         } else {
           map.dragging.disable();
         }
@@ -369,7 +376,10 @@
     }
 
     function toggleGPS(e) {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+      }
       const gpsBtn = document.getElementById('btn-gps-toggle');
       const setTeeBtn = document.getElementById('btn-set-tee-gps');
 
@@ -412,7 +422,10 @@
     }
 
     function setTeeToGPS(e) {
-      if (e) e.stopPropagation();
+      if (e) {
+        e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+      }
       if (userGPSPosition) {
         teePosition = userGPSPosition;
         teeMarker.setLatLng(teePosition);
@@ -581,8 +594,6 @@
       document.getElementById('dist-green').innerText = targetPosition ? distGreen : 0;
       document.getElementById('wind-text').innerHTML = windText;
       document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (${tempImpactFormatted})`;
-      
-      // YKSI 'm' -YKSIKKÖ RIITTÄÄ PERÄÄN
       document.getElementById('sector-width').innerText = `${sectorWidthInner} / ${sectorWidthOuter} m`;
     }
 
@@ -643,7 +654,7 @@
         className: 'length-badge-container',
         html: `<div class="length-badge">
                  <div>${distanceMeters} m</div>
-                 <div style="color:#ef4444; font-size:14px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
+                 <div style="color:#ffffff; font-size:14px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
                </div>`,
         iconSize: [85, 48],
         iconAnchor: [42, 24]
@@ -707,14 +718,11 @@
       });
     }
 
-    // SIIRTO TAI PITUUDEN LUKITUS JA SUUNNAN PYÖRITYS
     function handlePointerMove(latlng) {
       if (currentMode === 'target') {
         if (!isTargetLocked) {
-          // Vapaa siirto
           targetPosition = [latlng.lat, latlng.lng];
         } else {
-          // Lukittu pituus ➔ Pyöritetään sektoria uuden suunnan (bearing) mukaan
           const newBearing = getBearing(teePosition, [latlng.lat, latlng.lng]);
           targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
         }
@@ -749,7 +757,7 @@
         greenPosition = coords;
         greenMarker.setLatLng(coords);
         renderWindOverlayIcons();
-      } else if (currentMode === 'target') {
+      } else if (currentMode === 'target' && !isTargetLocked) {
         handlePointerMove(e.latlng);
       }
       updateCalculations();
