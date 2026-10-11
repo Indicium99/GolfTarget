@@ -28,7 +28,7 @@
       touch-action: none;
     }
     #map {
-      height: 72vh;
+      height: 68dvh;
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
@@ -36,8 +36,8 @@
       position: relative;
     }
     #info-panel {
-      height: 28vh;
-      padding: 10px 14px;
+      height: 32dvh;
+      padding: 10px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
@@ -47,7 +47,6 @@
       z-index: 2000;
     }
     
-    /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA (Z-INDEX NOPSTETTU) */
     .map-controls-right {
       position: absolute;
       top: 12px;
@@ -56,17 +55,17 @@
       display: flex;
       flex-direction: column;
       align-items: flex-end;
-      gap: 8px;
+      gap: 10px;
       pointer-events: auto;
     }
     .gps-map-button {
       background: rgba(15, 23, 42, 0.95);
       border: 2px solid #38bdf8;
       color: #38bdf8;
-      padding: 9px 12px;
+      padding: 10px 14px;
       border-radius: 8px;
       font-weight: bold;
-      font-size: 14px;
+      font-size: 15px;
       cursor: pointer;
       box-shadow: 0 4px 10px rgba(0,0,0,0.6);
       -webkit-tap-highlight-color: transparent;
@@ -77,19 +76,19 @@
       border-color: #ffffff;
     }
 
-    /* IKONIPAINIKKEET GPS-PAINIKKEEN ALLA */
     .icon-buttons-group {
       display: flex;
+      flex-direction: column;
       gap: 8px;
     }
     .icon-btn {
-      width: 44px;
-      height: 44px;
+      width: 46px;
+      height: 46px;
       padding: 0;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 22px;
+      font-size: 24px;
       border-radius: 10px;
       border: 2px solid #334155;
       cursor: pointer;
@@ -105,22 +104,21 @@
       background: #a855f7; 
       color: white; 
       display: none; 
-      font-size: 12px;
+      font-size: 13px;
       font-weight: bold;
-      padding: 7px 10px;
+      padding: 8px 12px;
       border-radius: 8px;
       border: none;
       box-shadow: 0 3px 8px rgba(0,0,0,0.5);
     }
     .active-mode { outline: 3px solid #ffffff; }
 
-    /* SUUREMMAT FONTTIKOOT ALAPALKISSA */
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 8px;
+      gap: 10px;
       background: #1e293b;
-      padding: 10px 12px;
+      padding: 12px;
       border-radius: 10px;
       border: 1px solid #334155;
     }
@@ -128,27 +126,26 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 1.18em;
+      font-size: 18px;
       font-weight: bold;
     }
     .metric-subline {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 1.02em;
+      font-size: 15px;
       color: #cbd5e1;
       border-top: 1px dashed #475569;
-      padding-top: 5px;
+      padding-top: 6px;
     }
-    .highlight-yellow { color: #facc15; font-size: 1.25em; }
-    .highlight-blue { color: #38bdf8; font-size: 1.2em; }
+    .highlight-yellow { color: #facc15; font-size: 22px; font-weight: bold; }
+    .highlight-blue { color: #38bdf8; font-size: 20px; font-weight: bold; }
     
     .elevation-up { color: #4ade80; font-weight: bold; }
     .elevation-down { color: #f87171; font-weight: bold; }
     .wind-tailwind { color: #4ade80; font-weight: bold; }
     .wind-headwind { color: #f87171; font-weight: bold; }
 
-    /* Tuulinuolityyli kartalla */
     .clean-wind-arrow-wrapper {
       background: transparent !important;
       border: none !important;
@@ -160,12 +157,11 @@
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
     }
 
-    /* SUURENNETTU PITUUSNÄYTTÖ SEKTORIN NUOLELLA */
     .length-badge {
       background: rgba(15, 23, 42, 0.95);
-      border: 2px solid #facc15;
+      border: 2.5px solid #facc15;
       color: #facc15;
-      font-size: 15px;
+      font-size: 16px;
       font-weight: bold;
       padding: 6px 10px;
       border-radius: 8px;
@@ -176,7 +172,6 @@
       line-height: 1.35;
     }
 
-    /* GPS-sijaintipallo */
     .gps-user-marker {
       background: #38bdf8;
       border: 2px solid #ffffff;
@@ -193,46 +188,40 @@
 <body>
 
   <div id="map">
-    <!-- OIKEAN YLÄKULMAN KONTROLLIT (GPS + LOGONAPIT) -->
-    <div class="map-controls-right">
-      <button class="gps-map-button" id="btn-gps-toggle" onclick="toggleGPS()">🎯 Oma Sijainti</button>
-      <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS()">Aseta Tii GPS 📍</button>
+    <div class="map-controls-right" id="map-controls">
+      <button class="gps-map-button" id="btn-gps-toggle" onclick="toggleGPS(event)">🎯 Oma Sijainti</button>
+      <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS(event)">Aseta Tii GPS 📍</button>
       
       <div class="icon-buttons-group">
-        <button id="btn-tee" class="icon-btn btn-tee active-mode" onclick="setMode('tee')" title="Tiipaikka">📍</button>
-        <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green')" title="Viheriö">⛳</button>
-        <button id="btn-target" class="icon-btn btn-target" onclick="toggleTargetMode()" title="Kohde">🎯</button>
+        <button id="btn-tee" class="icon-btn btn-tee active-mode" onclick="setMode('tee', event)" title="Tiipaikka">📍</button>
+        <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green', event)" title="Viheriö">⛳</button>
+        <button id="btn-target" class="icon-btn btn-target" onclick="toggleTargetMode(event)" title="Kohde">🎯</button>
       </div>
     </div>
   </div>
 
   <div id="info-panel">
-    <!-- MITTARISTO -->
     <div class="metrics-container">
-      <!-- RIVI 1: MATKAT -->
       <div class="metric-line">
         <span>Matka: <span id="dist-tee" class="highlight-blue">-</span> m</span>
         <span class="highlight-yellow">Plays like <span id="plays-like-val">-</span> m</span>
-        <span>⛳ Viheriölle: <span id="dist-green" style="color:#ef4444; font-size:1.15em;">-</span> m</span>
+        <span>⛳ Viheriölle: <span id="dist-green" style="color:#ef4444; font-size: 20px;">-</span> m</span>
       </div>
 
-      <!-- RIVI 2: TUULI JA LÄMPÖTILA -->
       <div class="metric-subline">
         <span id="wind-text">💨 Tuuli: -</span>
         <span id="temp-text">🌡️ -°C</span>
       </div>
 
-      <!-- RIVI 3: KORKEUS JA SEKTORI -->
       <div class="metric-subline">
         <span>Korkeusero: <span id="elevation-diff">-</span></span>
         <span>Sektori: <span id="sector-width">-</span> m</span>
       </div>
     </div>
 
-    <!-- ALARIVI -->
-    <div style="display:flex; justify-content:space-between; font-size: 0.9em; color: #94a3b8; font-family: monospace;">
+    <div style="display:flex; justify-content:space-between; font-size: 14px; color: #94a3b8; font-family: monospace;">
       <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
-      <span style="color:#facc15; font-weight: bold;">v1.1.0</span>
+      <span style="color:#facc15; font-weight: bold;">v1.1.3</span>
     </div>
   </div>
 
@@ -240,7 +229,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.1.0";
+    const APP_VERSION = "v1.1.3";
 
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
@@ -261,10 +250,16 @@
     let currentWindGusts = 0;
     let currentTempC = 20;
 
+    let renderPending = false;
+
     const map = L.map('map', {
       maxZoom: 21,
       tap: false
     }).setView([60.260088, 24.680901], 17);
+
+    const controlsContainer = document.getElementById('map-controls');
+    L.DomEvent.disableClickPropagation(controlsContainer);
+    L.DomEvent.disableScrollPropagation(controlsContainer);
 
     L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
       maxZoom: 21,
@@ -275,7 +270,7 @@
 
     const golfTeeIcon = L.divIcon({
       className: 'custom-tee-icon',
-      html: `<svg width="34" height="34" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));">
+      html: `<svg width="34" height="34" viewBox="0 0 32 32" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));">
               <circle cx="16" cy="10" r="5.5" fill="#ffffff" stroke="#0f172a" stroke-width="0.8"/>
               <path d="M11 16 L21 16 L17 28 L15 28 Z" fill="#22c55e" stroke="#ffffff" stroke-width="0.8"/>
             </svg>`,
@@ -285,7 +280,7 @@
 
     const golfGreenIcon = L.divIcon({
       className: 'custom-green-icon',
-      html: `<svg width="32" height="36" viewBox="0 0 32 36" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
+      html: `<svg width="32" height="36" viewBox="0 0 32 36" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
               <line x1="8" y1="4" x2="8" y2="34" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
               <path d="M8 4 L28 10 L8 16 Z" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
               <circle cx="8" cy="3" r="1.8" fill="#facc15"/>
@@ -296,7 +291,7 @@
 
     const golfTargetIcon = L.divIcon({
       className: 'custom-target-icon',
-      html: `<svg width="32" height="32" viewBox="0 0 32 32" xmlns="http://www.w3.org/2000/svg">
+      html: `<svg width="32" height="32" viewBox="0 0 32 32">
               <circle cx="16" cy="16" r="14" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="3,2"/>
               <line x1="16" y1="0" x2="16" y2="32" stroke="#ffffff" stroke-width="1.5"/>
               <line x1="0" y1="16" x2="32" y2="16" stroke="#ffffff" stroke-width="1.5"/>
@@ -312,14 +307,15 @@
       iconAnchor: [8, 8]
     });
 
-    let teeMarker = L.marker(teePosition, {icon: golfTeeIcon, draggable: true}).addTo(map).bindPopup("Tiipaikka");
-    let greenMarker = L.marker(greenPosition, {icon: golfGreenIcon, draggable: true}).addTo(map).bindPopup("Viheriö");
+    let teeMarker = L.marker(teePosition, {icon: golfTeeIcon, draggable: true}).addTo(map);
+    let greenMarker = L.marker(greenPosition, {icon: golfGreenIcon, draggable: true}).addTo(map);
     let targetMarker = null;
 
-    let centerLine = null;
-    let lineToGreen = null;
-    let outerSectorPolyline = null;
-    let innerSectorPolyline = null;
+    let centerLine = L.polyline([], {color: '#ffffff', weight: 1.5}).addTo(map);
+    let lineToGreen = L.polyline([], {color: '#ef4444', weight: 1.5, dashArray: '4, 4'}).addTo(map);
+    let outerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5}).addTo(map);
+    let innerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5, dashArray: '5, 5'}).addTo(map);
+    
     let arrowGroup = L.layerGroup().addTo(map);
     let distanceArcGroup = L.layerGroup().addTo(map);
     let sectorBadgeGroup = L.layerGroup().addTo(map);
@@ -346,14 +342,16 @@
       }
     }
 
-    function setMode(mode) {
+    function setMode(mode, e) {
+      if (e) e.stopPropagation();
       currentMode = mode;
       isTargetLocked = false;
       map.dragging.enable();
       updateModeButtonsUI();
     }
 
-    function toggleTargetMode() {
+    function toggleTargetMode(e) {
+      if (e) e.stopPropagation();
       if (currentMode !== 'target') {
         currentMode = 'target';
         isTargetLocked = false;
@@ -369,7 +367,8 @@
       updateModeButtonsUI();
     }
 
-    function toggleGPS() {
+    function toggleGPS(e) {
+      if (e) e.stopPropagation();
       const gpsBtn = document.getElementById('btn-gps-toggle');
       const setTeeBtn = document.getElementById('btn-set-tee-gps');
 
@@ -396,7 +395,7 @@
             userGPSPosition = [lat, lng];
 
             if (!userMarker) {
-              userMarker = L.marker(userGPSPosition, {icon: userGpsIcon}).addTo(map).bindPopup("Olet tässä");
+              userMarker = L.marker(userGPSPosition, {icon: userGpsIcon}).addTo(map);
               map.setView(userGPSPosition, 18);
             } else {
               userMarker.setLatLng(userGPSPosition);
@@ -415,7 +414,8 @@
       }
     }
 
-    function setTeeToGPS() {
+    function setTeeToGPS(e) {
+      if (e) e.stopPropagation();
       if (userGPSPosition) {
         teePosition = userGPSPosition;
         teeMarker.setLatLng(teePosition);
@@ -493,7 +493,7 @@
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
             <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
           </svg>
-          <div style="font-size: 12px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.2;">
+          <div style="font-size: 13px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.2;">
             💨 ${currentWindSpeed} m/s<br>
             <span style="color:#facc15; font-size:11px;">(${currentWindGusts} m/s)</span>
           </div>
@@ -542,7 +542,7 @@
         } catch (err) {
           document.getElementById('elevation-diff').innerText = "-";
         }
-      }, 250);
+      }, 350);
     }
 
     function updateBottomPanelMetrics() {
@@ -557,7 +557,6 @@
 
       const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
-      const roundedWindComp = Math.abs(Math.round(tailwindComponent * 10) / 10);
 
       const windDistanceImpact = Math.round(-tailwindComponent * 0.95); 
       const tempDiff = currentTempC - 20;
@@ -570,11 +569,11 @@
       let windImpactFormatted = windDistanceImpact >= 0 ? `+${windDistanceImpact}m` : `${windDistanceImpact}m`;
 
       if (tailwindComponent > 0.2) {
-        windText = `<span class="wind-tailwind">🍃 Tuuli: ${currentWindSpeed} m/s (${currentWindGusts} m/s) ➔ Myötä (${windImpactFormatted})</span>`;
+        windText = `<span class="wind-tailwind">🍃 Tuuli: ${currentWindSpeed} m/s ➔ Myötä (${windImpactFormatted})</span>`;
       } else if (tailwindComponent < -0.2) {
-        windText = `<span class="wind-headwind">💨 Tuuli: ${currentWindSpeed} m/s (${currentWindGusts} m/s) ➔ Vasta (${windImpactFormatted})</span>`;
+        windText = `<span class="wind-headwind">💨 Tuuli: ${currentWindSpeed} m/s ➔ Vasta (${windImpactFormatted})</span>`;
       } else {
-        windText = `<span>🌬️ Tuuli: ${currentWindSpeed} m/s (${currentWindGusts} m/s) ➔ Sivutuuli</span>`;
+        windText = `<span>🌬️ Tuuli: ${currentWindSpeed} m/s ➔ Sivutuuli</span>`;
       }
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
@@ -587,76 +586,49 @@
       document.getElementById('sector-width').innerText = `${sectorWidthInner} m / ${sectorWidthOuter} m`;
     }
 
-    function createArcSectorPolylineByBearing(teePos, distTee, bearing, ratio, color, dashArray) {
+    function getArcSectorPoints(teePos, distTee, bearing, ratio) {
       const deltaAngle = Math.atan(ratio / 2) * (180 / Math.PI); 
-
-      const points = [];
-      points.push(teePos);
-
-      const leftStart = getDestinationPoint(teePos[0], teePos[1], distTee, bearing - deltaAngle);
-      points.push(leftStart);
-
-      const steps = 20;
+      const points = [teePos];
+      
+      const steps = 12; // Optimoidut pisteet suorituskykyä varten
       for (let i = 0; i <= steps; i++) {
         const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
-        const arcPt = getDestinationPoint(teePos[0], teePos[1], distTee, currentAngle);
-        points.push(arcPt);
+        points.push(getDestinationPoint(teePos[0], teePos[1], distTee, currentAngle));
       }
-
       points.push(teePos);
-
-      return L.polyline(points, {
-        color: color,
-        weight: 1.5,
-        dashArray: dashArray,
-        fill: false
-      });
+      return points;
     }
 
     function drawCenterArrowExtension(startPos, bearing, extensionLength = 50) {
       arrowGroup.clearLayers();
-
       const endPos = getDestinationPoint(startPos[0], startPos[1], extensionLength, bearing);
-
-      const shaft = L.polyline([startPos, endPos], {
-        color: '#ffffff',
-        weight: 1.5
-      });
+      
+      const shaft = L.polyline([startPos, endPos], {color: '#ffffff', weight: 1.5});
       arrowGroup.addLayer(shaft);
 
       const headLength = 10;
       const leftTip = getDestinationPoint(endPos[0], endPos[1], headLength, bearing + 155);
       const rightTip = getDestinationPoint(endPos[0], endPos[1], headLength, bearing - 155);
 
-      const head = L.polyline([leftTip, endPos, rightTip], {
-        color: '#ffffff',
-        weight: 1.5
-      });
+      const head = L.polyline([leftTip, endPos, rightTip], {color: '#ffffff', weight: 1.5});
       arrowGroup.addLayer(head);
     }
 
     function drawDistanceArcsByBearing(teePos, distTee, bearing, maxRatio) {
       distanceArcGroup.clearLayers();
-
       if (distTee < 130) return;
 
       const deltaAngle = Math.atan(maxRatio / 2) * (180 / Math.PI);
 
-      for (let d = 130; d <= distTee; d += 20) {
+      for (let d = 130; d <= distTee; d += 30) { // Harvennettu kaaria sulavuuden takaamiseksi
         const arcPoints = [];
-        const steps = 15;
+        const steps = 8;
         for (let i = 0; i <= steps; i++) {
           const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
-          const arcPt = getDestinationPoint(teePos[0], teePos[1], d, currentAngle);
-          arcPoints.push(arcPt);
+          arcPoints.push(getDestinationPoint(teePos[0], teePos[1], d, currentAngle));
         }
 
-        const arcLine = L.polyline(arcPoints, {
-          color: '#ffffff',
-          weight: 1,
-          dashArray: null,
-          opacity: 0.75
-        });
+        const arcLine = L.polyline(arcPoints, {color: '#ffffff', weight: 1, opacity: 0.6});
         distanceArcGroup.addLayer(arcLine);
       }
     }
@@ -671,74 +643,69 @@
         className: 'length-badge-container',
         html: `<div class="length-badge">
                  <div>${distanceMeters} m</div>
-                 <div style="color:#ef4444; font-size:13px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
+                 <div style="color:#ef4444; font-size:14px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
                </div>`,
-        iconSize: [80, 46],
-        iconAnchor: [40, 23]
+        iconSize: [85, 48],
+        iconAnchor: [42, 24]
       });
 
       const badgeMarker = L.marker(badgePos, { icon: badgeIcon, interactive: false });
       sectorBadgeGroup.addLayer(badgeMarker);
     }
 
+    // TEHOKAS REQUEST ANIMATION FRAME -PIIRROSLOOPPI
     function updateCalculations() {
-      const totalDist = calculateDistance(teePosition, greenPosition);
-      document.getElementById('dist-total').innerText = totalDist;
+      if (renderPending) return;
+      renderPending = true;
 
-      if (outerSectorPolyline) map.removeLayer(outerSectorPolyline);
-      if (innerSectorPolyline) map.removeLayer(innerSectorPolyline);
+      requestAnimationFrame(() => {
+        renderPending = false;
 
-      const currentTargetOrGreen = targetPosition || greenPosition;
-      if (!centerLine) {
-        centerLine = L.polyline([teePosition, currentTargetOrGreen], {color: '#ffffff', weight: 1.5}).addTo(map);
-      } else {
+        const totalDist = calculateDistance(teePosition, greenPosition);
+        document.getElementById('dist-total').innerText = totalDist;
+
+        const currentTargetOrGreen = targetPosition || greenPosition;
         centerLine.setLatLngs([teePosition, currentTargetOrGreen]);
-      }
 
-      if (targetPosition) {
-        const distTee = calculateDistance(teePosition, targetPosition);
+        if (targetPosition) {
+          const distTee = calculateDistance(teePosition, targetPosition);
 
-        if (!targetMarker) {
-          targetMarker = L.marker(targetPosition, {icon: golfTargetIcon}).addTo(map);
+          if (!targetMarker) {
+            targetMarker = L.marker(targetPosition, {icon: golfTargetIcon}).addTo(map);
+          } else {
+            targetMarker.setLatLng(targetPosition);
+          }
+
+          updateBottomPanelMetrics();
+          fetchElevationDifferenceDebounced(teePosition, targetPosition);
+
+          const bearing = getBearing(teePosition, targetPosition);
+
+          outerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, distTee, bearing, 0.2222));
+          innerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, distTee, bearing, 0.1481));
+
+          drawDistanceArcsByBearing(teePosition, distTee, bearing, 0.2222);
+          drawCenterArrowExtension(targetPosition, bearing, 50);
+          drawLengthBadgeAtArrowExtension(teePosition, targetPosition, distTee, bearing);
+
+          lineToGreen.setLatLngs([targetPosition, greenPosition]);
         } else {
-          targetMarker.setLatLng(targetPosition);
+          lineToGreen.setLatLngs([]);
+          const defaultDistance = 270;
+          const bearing = getBearing(teePosition, greenPosition);
+
+          updateBottomPanelMetrics();
+
+          outerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, defaultDistance, bearing, 0.2222));
+          innerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, defaultDistance, bearing, 0.1481));
+
+          drawDistanceArcsByBearing(teePosition, defaultDistance, bearing, 0.2222);
+
+          const defaultEndPos = getDestinationPoint(teePosition[0], teePosition[1], defaultDistance, bearing);
+          drawCenterArrowExtension(defaultEndPos, bearing, 50);
+          drawLengthBadgeAtArrowExtension(teePosition, null, defaultDistance, bearing);
         }
-
-        updateBottomPanelMetrics();
-        fetchElevationDifferenceDebounced(teePosition, targetPosition);
-
-        const bearing = getBearing(teePosition, targetPosition);
-
-        outerSectorPolyline = createArcSectorPolylineByBearing(teePosition, distTee, bearing, 0.2222, '#ffffff', null).addTo(map);
-        innerSectorPolyline = createArcSectorPolylineByBearing(teePosition, distTee, bearing, 0.1481, '#ffffff', '5, 5').addTo(map);
-
-        drawDistanceArcsByBearing(teePosition, distTee, bearing, 0.2222);
-        drawCenterArrowExtension(targetPosition, bearing, 50);
-        drawLengthBadgeAtArrowExtension(teePosition, targetPosition, distTee, bearing);
-
-      } else {
-        const defaultDistance = 270;
-        const bearing = getBearing(teePosition, greenPosition);
-
-        updateBottomPanelMetrics();
-
-        outerSectorPolyline = createArcSectorPolylineByBearing(teePosition, defaultDistance, bearing, 0.2222, '#ffffff', null).addTo(map);
-        innerSectorPolyline = createArcSectorPolylineByBearing(teePosition, defaultDistance, bearing, 0.1481, '#ffffff', '5, 5').addTo(map);
-
-        drawDistanceArcsByBearing(teePosition, defaultDistance, bearing, 0.2222);
-
-        const defaultEndPos = getDestinationPoint(teePosition[0], teePosition[1], defaultDistance, bearing);
-        drawCenterArrowExtension(defaultEndPos, bearing, 50);
-        drawLengthBadgeAtArrowExtension(teePosition, null, defaultDistance, bearing);
-      }
-
-      if (targetPosition) {
-        if (!lineToGreen) lineToGreen = L.polyline([], {color: '#ef4444', weight: 1.5, dashArray: '4, 4'}).addTo(map);
-        lineToGreen.setLatLngs([targetPosition, greenPosition]);
-      } else {
-        if (lineToGreen) map.removeLayer(lineToGreen);
-        lineToGreen = null;
-      }
+      });
     }
 
     function handlePointerMove(latlng) {
