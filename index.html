@@ -28,16 +28,15 @@
       touch-action: none;
     }
     #map {
-      height: 72vh;
+      height: 70vh;
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
       touch-action: none;
-      transition: transform 0.3s ease-out; /* Pehmeä kartan pyöritys */
     }
     #info-panel {
-      height: 28vh;
-      padding: 10px 14px;
+      height: 30vh;
+      padding: 8px 12px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
@@ -45,13 +44,12 @@
       justify-content: space-between;
       border-top: 2px solid #38bdf8;
       z-index: 2000;
-      position: relative;
     }
     .panel-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
+      gap: 6px;
     }
     .mode-buttons {
       display: flex;
@@ -60,9 +58,9 @@
     }
     button {
       flex: 1;
-      padding: 10px 6px;
+      padding: 9px 4px;
       font-weight: bold;
-      font-size: 1em;
+      font-size: 0.9em;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -75,13 +73,13 @@
     .btn-gps-tee { background-color: #a855f7; color: white; display: none; }
     .active { outline: 3px solid #facc15; }
     
-    /* SUUREMMAT FONTTIKOOT ALAPALKISSA */
+    /* ALAPALKIN SELKEÄ JA MAHTUVA RAKENNE */
     .metrics-container {
       display: flex;
       flex-direction: column;
       gap: 6px;
       background: #1e293b;
-      padding: 8px 12px;
+      padding: 8px 10px;
       border-radius: 8px;
       border: 1px solid #334155;
     }
@@ -89,20 +87,19 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 1.1em;
+      font-size: 1.05em;
       font-weight: bold;
     }
     .metric-subline {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 0.95em;
+      font-size: 0.88em;
       color: #cbd5e1;
       border-top: 1px dashed #475569;
       padding-top: 4px;
-      margin-top: 2px;
     }
-    .highlight-yellow { color: #facc15; font-size: 1.15em; }
+    .highlight-yellow { color: #facc15; font-size: 1.1em; }
     .highlight-blue { color: #38bdf8; }
     
     .elevation-up { color: #4ade80; }
@@ -113,16 +110,16 @@
     /* GPS-Painike Kartalla */
     .gps-map-button {
       position: absolute;
-      top: 12px;
-      right: 12px;
+      top: 10px;
+      right: 10px;
       z-index: 1000;
       background: rgba(15, 23, 42, 0.9);
       border: 2px solid #38bdf8;
       color: #38bdf8;
-      padding: 10px 14px;
+      padding: 8px 12px;
       border-radius: 8px;
       font-weight: bold;
-      font-size: 15px;
+      font-size: 13px;
       cursor: pointer;
       box-shadow: 0 4px 10px rgba(0,0,0,0.5);
     }
@@ -149,9 +146,9 @@
       background: rgba(15, 23, 42, 0.95);
       border: 2px solid #facc15;
       color: #facc15;
-      font-size: 13px;
+      font-size: 12px;
       font-weight: bold;
-      padding: 4px 8px;
+      padding: 3px 6px;
       border-radius: 6px;
       white-space: nowrap;
       box-shadow: 0 2px 8px rgba(0,0,0,0.6);
@@ -190,28 +187,32 @@
       </div>
     </div>
 
-    <!-- SUURET JA SELKEÄT MITTARIT ALAPALKISSA -->
+    <!-- NÄYTÖLLE MAHTUVA MITTARISTO -->
     <div class="metrics-container">
-      <!-- RIVI 1: PÄÄMATKAT -->
+      <!-- RIVI 1: MATKAT -->
       <div class="metric-line">
         <span>Matka: <span id="dist-tee" class="highlight-blue">-</span> m</span>
         <span class="highlight-yellow">Plays like <span id="plays-like-val">-</span> m</span>
         <span>⛳ Viheriölle: <span id="dist-green" style="color:#ef4444;">-</span> m</span>
       </div>
 
-      <!-- RIVI 2: SÄÄ & SUUNNAT -->
+      <!-- RIVI 2: TUULI JA LÄMPÖTILA -->
       <div class="metric-subline">
         <span id="wind-text">💨 Tuuli: -</span>
         <span id="temp-text">🌡️ -°C</span>
-        <span>Korkeus: <span id="elevation-diff">-</span></span>
+      </div>
+
+      <!-- RIVI 3: KORKEUS JA SEKTORI -->
+      <div class="metric-subline">
+        <span>Korkeusero: <span id="elevation-diff">-</span></span>
         <span>Sektori: <span id="sector-width">-</span> m</span>
       </div>
     </div>
 
-    <!-- ALARIVI: VERSIONALAMERKKI & KOORDINAATIT -->
-    <div class="panel-row" style="font-size: 0.82em; color: #94a3b8; font-family: monospace;">
+    <!-- ALARIVI: KOKO VÄYLÄ & VERSIOTUNNISTE -->
+    <div class="panel-row" style="font-size: 0.8em; color: #94a3b8; font-family: monospace;">
       <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
-      <span style="color:#facc15; font-weight: bold;">v1.0.5</span>
+      <span style="color:#facc15; font-weight: bold;">v1.0.6</span>
     </div>
   </div>
 
@@ -219,7 +220,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.0.5";
+    const APP_VERSION = "v1.0.6";
 
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
@@ -319,12 +320,6 @@
       }
     }
 
-    // KARTAN AUTOMAATTINEN PYÖRITYS (Lyöntisuunta osoittaa aina ylöspäin)
-    function rotateMapToShotBearing(bearing) {
-      const mapContainer = document.getElementById('map');
-      mapContainer.style.transform = `rotate(${-bearing}deg)`;
-    }
-
     function toggleGPS() {
       const gpsBtn = document.getElementById('btn-gps-toggle');
       const setTeeBtn = document.getElementById('btn-set-tee-gps');
@@ -419,11 +414,6 @@
       return Math.round((Math.atan2(y, x) * 180 / Math.PI + 360) % 360);
     }
 
-    function degreesToCardinal(deg) {
-      const dirs = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
-      return dirs[Math.round(deg / 45) % 8];
-    }
-
     async function fetchWeatherData() {
       try {
         const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${teePosition[0]}&longitude=${teePosition[1]}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms`);
@@ -449,8 +439,8 @@
       const dirTo = (currentWindDirection + 180) % 360;
 
       const windSvgHtml = `
-        <div style="position: relative; width: 80px; height: 40px; display:flex; align-items:center; gap:6px;">
-          <svg class="wind-arrow-svg" width="36" height="36" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
+        <div style="position: relative; width: 60px; height: 35px; display:flex; align-items:center;">
+          <svg class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
             <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
           </svg>
@@ -460,8 +450,8 @@
       const windIcon = L.divIcon({
         className: 'clean-wind-arrow-wrapper',
         html: windSvgHtml,
-        iconSize: [80, 40],
-        iconAnchor: [18, 20]
+        iconSize: [60, 35],
+        iconAnchor: [16, 16]
       });
 
       const teeWindPos = getDestinationPoint(teePosition[0], teePosition[1], 45, 270);
@@ -488,14 +478,11 @@
 
             const diffElem = document.getElementById('elevation-diff');
             if (currentElevationDiffMeters > 0) {
-              currentElevationText = `+${currentElevationDiffMeters} m`;
-              diffElem.innerHTML = `<span class="elevation-up">+${currentElevationDiffMeters}m</span>`;
+              diffElem.innerHTML = `<span class="elevation-up">+${currentElevationDiffMeters} m</span>`;
             } else if (currentElevationDiffMeters < 0) {
-              currentElevationText = `${currentElevationDiffMeters} m`;
-              diffElem.innerHTML = `<span class="elevation-down">${currentElevationDiffMeters}m</span>`;
+              diffElem.innerHTML = `<span class="elevation-down">${currentElevationDiffMeters} m</span>`;
             } else {
-              currentElevationText = `0 m`;
-              diffElem.innerText = "0m";
+              diffElem.innerText = "0 m";
             }
             updateBottomPanelMetrics();
           }
@@ -505,7 +492,6 @@
       }, 250);
     }
 
-    // PÄIVITETÄÄN KAIKKI METRIKIT SUORAAN ALAPALKKIIN
     function updateBottomPanelMetrics() {
       const activeTarget = targetPosition || greenPosition;
       const distTee = calculateDistance(teePosition, activeTarget);
@@ -515,9 +501,6 @@
       
       const shotBearing = getBearing(teePosition, activeTarget);     
       const windToDirection = (currentWindDirection + 180) % 360;      
-
-      // Pyöritetään karttaa automaattisesti lyöntisuuntaan
-      rotateMapToShotBearing(shotBearing);
 
       const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
@@ -543,13 +526,12 @@
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
-      // Päivitetään alapaneelin tekstikentät
       document.getElementById('dist-tee').innerText = distTee;
       document.getElementById('plays-like-val').innerText = playsLikeDistance;
       document.getElementById('dist-green').innerText = targetPosition ? distGreen : 0;
       document.getElementById('wind-text').innerHTML = windText;
       document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (${tempImpactFormatted})`;
-      document.getElementById('sector-width').innerText = `${sectorWidthInner}/${sectorWidthOuter}`;
+      document.getElementById('sector-width').innerText = `${sectorWidthInner} m / ${sectorWidthOuter} m`;
     }
 
     function createArcSectorPolylineByBearing(teePos, distTee, bearing, ratio, color, dashArray) {
@@ -636,10 +618,10 @@
         className: 'length-badge-container',
         html: `<div class="length-badge">
                  <div>${distanceMeters} m</div>
-                 <div style="color:#ef4444; font-size:11px; font-weight:bold; margin-top:2px;">⛳ ${distGreen} m</div>
+                 <div style="color:#ef4444; font-size:10px; font-weight:bold; margin-top:1px;">⛳ ${distGreen} m</div>
                </div>`,
-        iconSize: [66, 40],
-        iconAnchor: [33, 20]
+        iconSize: [60, 36],
+        iconAnchor: [30, 18]
       });
 
       const badgeMarker = L.marker(badgePos, { icon: badgeIcon, interactive: false });
