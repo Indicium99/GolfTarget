@@ -22,7 +22,7 @@
       background-color: #0f172a;
       color: #ffffff;
       overflow: hidden;
-      touch-action: none; /* Estää iPhonen turhat pyyhkäisyeleet backgroundissa */
+      touch-action: none;
     }
     #map {
       height: 83vh;
@@ -51,11 +51,12 @@
     .mode-buttons {
       display: flex;
       gap: 6px;
+      align-items: center;
     }
     button {
-      padding: 8px 14px;
+      padding: 8px 12px;
       font-weight: bold;
-      font-size: 0.88em;
+      font-size: 0.85em;
       border: none;
       border-radius: 6px;
       cursor: pointer;
@@ -64,6 +65,7 @@
     .btn-tee { background-color: #22c55e; color: white; }
     .btn-green { background-color: #ef4444; color: white; }
     .btn-target { background-color: #38bdf8; color: black; }
+    .btn-gps-tee { background-color: #a855f7; color: white; display: none; }
     .active { outline: 2.5px solid #facc15; }
     
     .metrics-grid {
@@ -84,6 +86,31 @@
     .wind-tailwind { color: #4ade80; font-weight: bold; }
     .wind-headwind { color: #f87171; font-weight: bold; }
     .plays-like-value { color: #facc15; font-weight: bold; }
+
+    /* GPS-Painike Kartalla */
+    .gps-map-button {
+      position: absolute;
+      top: 12px;
+      right: 12px;
+      z-index: 1000;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1.5px solid #38bdf8;
+      color: #38bdf8;
+      padding: 8px 12px;
+      border-radius: 8px;
+      font-weight: bold;
+      font-size: 13px;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .gps-active {
+      background: #0284c7;
+      color: #ffffff;
+      border-color: #ffffff;
+    }
 
     /* Tuulinuolityyli */
     .clean-wind-arrow-wrapper {
@@ -128,6 +155,14 @@
       line-height: 1.35;
     }
 
+    /* Oma GPS-sijaintipallo */
+    .gps-user-marker {
+      background: #38bdf8;
+      border: 2px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 12px #38bdf8;
+    }
+
     .custom-green-icon, .custom-tee-icon, .custom-target-icon {
       background: transparent !important;
       border: none !important;
@@ -136,13 +171,17 @@
 </head>
 <body>
 
-  <div id="map"></div>
+  <div id="map">
+    <button class="gps-map-button" id="btn-gps-toggle" onclick="toggleGPS()">🎯 Oma Sijainti</button>
+  </div>
+
   <div id="info-panel">
     <div class="panel-row">
       <div class="mode-buttons">
         <button id="btn-tee" class="btn-tee active" onclick="setMode('tee')">1. Tiipaikka</button>
         <button id="btn-green" class="btn-green" onclick="setMode('green')">2. Viheriö</button>
         <button id="btn-target" class="btn-target" onclick="setMode('target')">3. Mittaa Kohde & Sektori</button>
+        <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS()">Aseta Tii tähän 📍</button>
       </div>
 
       <div class="metrics-grid">
@@ -173,6 +212,7 @@
     let teePosition = [60.261447, 24.681644];   
     let greenPosition = [60.258729, 24.680158]; 
     let targetPosition = null;
+    let userGPSPosition = null;
 
     let isTargetLocked = false;
     let currentMode = 'tee'; 
@@ -180,15 +220,19 @@
     let currentElevationText = "-";
     let elevationTimeout = null;
 
+    // GPS Seuranta
+    let watchId = null;
+    let userMarker = null;
+
     // Tuuli- ja lämpötilamuuttujat
     let currentWindSpeed = 0;
-    let currentWindDirection = 0; // Astetta (MISTÄ puhaltaa)
+    let currentWindDirection = 0;
     let currentWindGusts = 0;
     let currentTempC = 20;
 
     const map = L.map('map', {
       maxZoom: 21,
-      tap: false // iOS Safari tap-konfliktien korjaus
+      tap: false
     }).setView([60.260088, 24.680901], 17);
 
     // Google Maps Satelliittikerros
@@ -210,7 +254,7 @@
       iconAnchor: [17, 28]
     });
 
-    // VIHERIÖ-IKONI (Pelkkä lipputanko ja lippu ilman nurmialustaa)
+    // VIHERIÖ-IKONI
     const golfGreenIcon = L.divIcon({
       className: 'custom-green-icon',
       html: `<svg width="32" height="36" viewBox="0 0 32 36" xmlns="http://www.w3.org/2000/svg" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
@@ -235,6 +279,13 @@
       iconAnchor: [16, 16]
     });
 
+    // Oman Sijainnin Ikoni
+    const userGpsIcon = L.divIcon({
+      className: 'gps-user-marker',
+      iconSize: [16, 16],
+      iconAnchor: [8, 8]
+    });
+
     let teeMarker = L.marker(teePosition, {icon: golfTeeIcon, draggable: true}).addTo(map).bindPopup("Tiipaikka (Väylä 1)");
     let greenMarker = L.marker(greenPosition, {icon: golfGreenIcon, draggable: true}).addTo(map).bindPopup("Viheriö (Väylä 1)");
     let targetMarker = null;
@@ -257,6 +308,62 @@
 
       if (mode === 'target') {
         isTargetLocked = false;
+      }
+    }
+
+    // GPS-toiminnot
+    function toggleGPS() {
+      const gpsBtn = document.getElementById('btn-gps-toggle');
+      const setTeeBtn = document.getElementById('btn-set-tee-gps');
+
+      if (watchId !== null) {
+        navigator.geolocation.clearWatch(watchId);
+        watchId = null;
+        if (userMarker) map.removeLayer(userMarker);
+        userMarker = null;
+        gpsBtn.classList.remove('gps-active');
+        gpsBtn.innerText = "🎯 Oma Sijainti";
+        setTeeBtn.style.display = "none";
+      } else {
+        if (!navigator.geolocation) {
+          alert("Laitteesi ei tue GPS-paikannusta.");
+          return;
+        }
+
+        gpsBtn.innerText = "⌛ Paikannetaan...";
+
+        watchId = navigator.geolocation.watchPosition(
+          function(position) {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
+            userGPSPosition = [lat, lng];
+
+            if (!userMarker) {
+              userMarker = L.marker(userGPSPosition, {icon: userGpsIcon}).addTo(map).bindPopup("Olet tässä");
+              map.setView(userGPSPosition, 18);
+            } else {
+              userMarker.setLatLng(userGPSPosition);
+            }
+
+            gpsBtn.classList.add('gps-active');
+            gpsBtn.innerText = "📍 GPS Päällä";
+            setTeeBtn.style.display = "inline-block";
+          },
+          function(error) {
+            alert("Sijainnin hakeminen epäonnistui. Varmista, että selaimella on sijaintilupa.");
+            gpsBtn.innerText = "🎯 Oma Sijainti";
+          },
+          { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+        );
+      }
+    }
+
+    function setTeeToGPS() {
+      if (userGPSPosition) {
+        teePosition = userGPSPosition;
+        teeMarker.setLatLng(teePosition);
+        fetchWeatherData();
+        updateCalculations();
       }
     }
 
@@ -304,7 +411,6 @@
       return dirs[Math.round(deg / 45) % 8];
     }
 
-    // Säätietojen haku
     async function fetchWeatherData() {
       try {
         const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${teePosition[0]}&longitude=${teePosition[1]}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms`);
@@ -359,7 +465,6 @@
       windMarkersGroup.addLayer(greenWindMarker);
     }
 
-    // Korkeustiedot
     function fetchElevationDifferenceDebounced(teePos, targetPos) {
       clearTimeout(elevationTimeout);
       elevationTimeout = setTimeout(async () => {
@@ -589,7 +694,6 @@
         drawLengthBadgeAtArrowExtension(teePosition, targetPosition, distTee, bearing);
 
       } else {
-        // OLETUSNÄKYMÄ
         document.getElementById('coords-target').innerText = "-";
         document.getElementById('dist-tee').innerText = "-";
         document.getElementById('sector-width-inner').innerText = "-";
@@ -623,7 +727,6 @@
       }
     }
 
-    // YHDISTETTY HIIRI- JA KOSKETUSNÄYTTÖSEURANTA (iPHONELLE)
     function handlePointerMove(latlng) {
       if (currentMode === 'target' && !isTargetLocked) {
         targetPosition = [latlng.lat, latlng.lng];
@@ -635,7 +738,6 @@
       handlePointerMove(e.latlng);
     });
 
-    // iPhone / Kosketusnäyttöjen reaaliaikainen seuranta SORMEN LIIKKUESSA
     const mapElement = document.getElementById('map');
     
     mapElement.addEventListener('touchmove', function(e) {
@@ -647,7 +749,6 @@
       }
     }, { passive: true });
 
-    // Klikkaus / Kosketusnäytön napautus
     map.on('click', function(e) {
       const coords = [e.latlng.lat, e.latlng.lng];
 
@@ -661,9 +762,9 @@
         renderWindOverlayIcons();
       } else if (currentMode === 'target') {
         if (!isTargetLocked) {
-          isTargetLocked = true; // Ensimmäinen napautus lukitsee kohteeseen
+          isTargetLocked = true;
         } else {
-          isTargetLocked = false; // Toinen napautus vapauttaa seuranmaan sormea
+          isTargetLocked = false;
           targetPosition = coords;
         }
       }
@@ -682,7 +783,6 @@
       updateCalculations();
     });
 
-    // Alustetaan laskenta ja haetaan sää- ja tuulitiedot
     updateCalculations();
     fetchWeatherData();
   </script>
