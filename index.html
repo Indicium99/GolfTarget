@@ -48,6 +48,16 @@
       background-color: #0f172a;
     }
 
+    #sector-canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 10;
+    }
+
     #info-panel {
       height: 13dvh;
       padding: 6px 12px;
@@ -65,16 +75,17 @@
       display: none !important;
     }
 
+    /* Versiotieto yhtä pykälää isompana */
     .vertical-version-tag {
       position: absolute;
-      left: 6px;
+      left: 8px;
       top: 50%;
       transform: translateY(-50%) rotate(-90deg);
       transform-origin: center left;
       z-index: 9999;
-      font-size: 11px;
+      font-size: 13px;
       font-weight: bold;
-      color: rgba(255, 255, 255, 0.45);
+      color: rgba(255, 255, 255, 0.75);
       letter-spacing: 1px;
       pointer-events: none;
       white-space: nowrap;
@@ -300,16 +311,6 @@
     .sg-positive { color: #4ade80; font-weight: bold; }
     .sg-negative { color: #f87171; font-weight: bold; }
 
-    .arc-sg-badge {
-      color: #ffffff;
-      font-size: 12px;
-      font-weight: bold;
-      text-shadow: 0px 1px 3px #000000, 0px 0px 5px #000000;
-      white-space: nowrap;
-      pointer-events: none;
-      user-select: none;
-    }
-
     .clean-wind-badge {
       pointer-events: none;
       user-select: none;
@@ -334,15 +335,16 @@
 
   <div id="map-wrapper">
     <div id="map"></div>
+    <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v5.3.0</div>
+    <div class="vertical-version-tag">v5.4.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
         📍 <span id="dist-total" style="color:#38bdf8;">-</span> m &nbsp;|&nbsp; 📈 <span id="sg-val">SG: -</span>
       </div>
       <div class="top-banner-line2">
-        🎯 <span id="top-dist-tee" style="color:#38bdf8;">-</span>m &nbsp;|&nbsp; ⛳ <span id="top-dist-green" style="color:#ffffff;">-</span>m &nbsp;|&nbsp; ↔️ <span id="sector-width" style="color:#cbd5e1;">-</span>
+        🎯 <span id="top-dist-tee" style="color:#38bdf8;">-</span>m &nbsp;|&nbsp; 🎯 <span id="top-dist-green" style="color:#ffffff;">-</span>m &nbsp;|&nbsp; ↔️ <span id="sector-width" style="color:#cbd5e1;">-</span>
       </div>
     </div>
 
@@ -378,7 +380,7 @@
       <div class="icon-buttons-group">
         <button id="btn-gps-toggle" class="icon-btn btn-gps" onclick="toggleGPS(event)" title="Sijainti / Satelliitti">🛰️</button>
         <button id="btn-tee" class="icon-btn btn-tee" onclick="setMode('tee', event)" title="Tiipaikka">📍</button>
-        <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green', event)" title="Viheriö">⛳</button>
+        <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green', event)" title="Viheriö (Tähtäin)">🎯</button>
         <button id="btn-target" class="icon-btn btn-target active-mode" onclick="toggleTargetMode(event)" title="Kohde / Lukitus">🎯</button>
       </div>
     </div>
@@ -408,7 +410,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v5.3.0";
+    const APP_VERSION = "v5.4.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
@@ -440,7 +442,6 @@
 
     let teeMarker, greenMarker, targetMarker;
     let teeWindMarker, greenWindMarker, sectorWindMarker;
-    let arcSgMarkers = [];
 
     const map = new maplibregl.Map({
       container: 'map',
@@ -476,6 +477,16 @@
       touchZoomRotate: true
     });
 
+    const canvas = document.getElementById('sector-canvas');
+    const ctx = canvas.getContext('2d');
+
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
     const controlsContainer = document.getElementById('map-controls');
     const leftControlsContainer = document.getElementById('left-controls');
     const headerContainer = document.getElementById('top-header');
@@ -490,22 +501,24 @@
       });
     });
 
-    /* TÄYDELLISESTI ANKKUROIDUT MARKERI-ELEMENTIT (SVG-TANKO KOHDISTETTU KESKELLE ALAAN) */
+    /* TÄHTÄINISTIN IKONI (CROSSHAIR/TARGET) VIHERIÖLLE & LIPULLE */
     function createCustomMarkerElement(type) {
       const el = document.createElement('div');
       el.style.cursor = 'pointer';
       
       if (type === 'tee') {
-        el.innerHTML = `<svg width="32" height="32" viewBox="0 0 32 32" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));">
+        el.innerHTML = `<svg width="34" height="34" viewBox="0 0 32 32" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));">
                           <circle cx="16" cy="10" r="5.5" fill="#ffffff" stroke="#0f172a" stroke-width="0.8"/>
                           <path d="M11 16 L21 16 L17 28 L15 28 Z" fill="#22c55e" stroke="#ffffff" stroke-width="0.8"/>
                         </svg>`;
       } else if (type === 'green') {
-        // Lipun tangon alaosa täsmälleen (16,34) kohdalla
-        el.innerHTML = `<svg width="32" height="36" viewBox="0 0 32 36" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
-                          <line x1="16" y1="4" x2="16" y2="34" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
-                          <path d="M16 4 L30 10 L16 16 Z" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
-                          <circle cx="16" cy="3" r="1.8" fill="#facc15"/>
+        // Punainen täysin symmetrinen Tähtäysristikko (keskipiste täsmälleen 18,18)
+        el.innerHTML = `<svg width="36" height="36" viewBox="0 0 36 36" style="filter: drop-shadow(0px 2px 5px rgba(0,0,0,0.9));">
+                          <circle cx="18" cy="18" r="13" fill="none" stroke="#ef4444" stroke-width="2.5"/>
+                          <circle cx="18" cy="18" r="7" fill="none" stroke="#ffffff" stroke-width="1.5"/>
+                          <circle cx="18" cy="18" r="2.5" fill="#ef4444"/>
+                          <line x1="18" y1="0" x2="18" y2="36" stroke="#ef4444" stroke-width="2"/>
+                          <line x1="0" y1="18" x2="36" y2="18" stroke="#ef4444" stroke-width="2"/>
                         </svg>`;
       } else if (type === 'target') {
         el.innerHTML = `<svg width="32" height="32" viewBox="0 0 32 32">
@@ -524,61 +537,13 @@
     targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
 
     map.on('load', () => {
-      map.addSource('lines-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-
-      map.addSource('dispersion-source', {
-        type: 'geojson',
-        data: { type: 'FeatureCollection', features: [] }
-      });
-
-      // SEKTORIT JA KAARET NÄKYVIIN (line-opacity: 1)
-      map.addLayer({
-        id: 'lines-layer',
-        type: 'line',
-        source: 'lines-source',
-        layout: {
-          'line-cap': 'round',
-          'line-join': 'round'
-        },
-        paint: {
-          'line-color': ['get', 'color'],
-          'line-width': ['get', 'width'],
-          'line-opacity': 1.0,
-          'line-dasharray': ['case', ['has', 'dash'], ['get', 'dash'], ['literal', [1]]]
-        }
-      });
-
-      map.addLayer({
-        id: 'dispersion-fill-layer',
-        type: 'fill',
-        source: 'dispersion-source',
-        paint: {
-          'fill-color': ['get', 'fillColor'],
-          'fill-opacity': ['get', 'fillOpacity']
-        }
-      });
-
-      map.addLayer({
-        id: 'dispersion-line-layer',
-        type: 'line',
-        source: 'dispersion-source',
-        paint: {
-          'line-color': ['get', 'color'],
-          'line-width': 1.5,
-          'line-opacity': 1.0
-        }
-      });
-
       // Markerit
       teeMarker = new maplibregl.Marker({ element: createCustomMarkerElement('tee'), anchor: 'bottom' })
         .setLngLat(teePosition)
         .addTo(map);
 
-      // Ankkuri täsmälleen pohjassa keskellä
-      greenMarker = new maplibregl.Marker({ element: createCustomMarkerElement('green'), anchor: 'bottom' })
+      // Ankkuri TÄYSIN keskellä täydellistä osumatarkkuutta varten
+      greenMarker = new maplibregl.Marker({ element: createCustomMarkerElement('green'), anchor: 'center' })
         .setLngLat(greenPosition)
         .addTo(map);
 
@@ -586,7 +551,7 @@
         .setLngLat(targetPosition)
         .addTo(map);
 
-      // SIIRTÄMINEN VAIN KUN PAINIKE / TILA ON VALITTUNA
+      // SIIRTÄMINEN VAIN KUN SEN OMA PAINIKE ON AKTIIVISENA
       enableModeRestrictedDrag(teeMarker, 'tee', (coords) => {
         teePosition = coords;
         updateCalculations();
@@ -598,9 +563,20 @@
       }, () => fetchWeatherData());
 
       enableModeRestrictedDrag(targetMarker, 'target', (coords) => {
-        targetPosition = coords;
+        if (!isTargetLocked) {
+          targetPosition = coords;
+        } else {
+          // LUKITUS: Säilyttää etäisyyden tismalleen samana, muuttaa vain kulmaa tiipaikkaan
+          const newBearing = getBearing(teePosition, coords);
+          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
+          targetMarker.setLngLat(targetPosition);
+        }
         updateCalculations();
       }, null);
+
+      map.on('render', () => {
+        drawCanvasOverlay();
+      });
 
       map.on('rotate', () => {
         const bearing = map.getBearing();
@@ -619,13 +595,13 @@
       fetchWeatherData();
     });
 
-    /* SIIRRON RAJOITUS: MERKKI SIIRTYY VAIN KUN SEN OMA TILA ON AKTIIVISENA */
+    /* VAKAA DYNAMISEN SIIRRON OHJAUS */
     function enableModeRestrictedDrag(marker, allowedMode, onDragCallback, onDragEndCallback) {
       const el = marker.getElement();
       let isDragging = false;
 
       function onPointerDown(e) {
-        if (currentMode !== allowedMode) return; // Siirto kielletty jos tila ei vastaa painiketta
+        if (currentMode !== allowedMode) return; 
         if (e.touches && e.touches.length > 1) return;
 
         isDragging = true;
@@ -646,7 +622,7 @@
         }
 
         const rect = map.getContainer().getBoundingClientRect();
-        // 60px sormen yläpuolelle
+        // 60px nosto sormen yläpuolelle
         const screenPoint = new maplibregl.Point(clientX - rect.left, clientY - rect.top - 60);
         const targetLngLat = map.unproject(screenPoint);
         const coords = [targetLngLat.lng, targetLngLat.lat];
@@ -672,6 +648,157 @@
 
       window.addEventListener('mouseup', onPointerUp);
       window.addEventListener('touchend', onPointerUp);
+    }
+
+    /* täysin uusi canvas-overlay-piirto (sektori ei voi ikinä enää kadota) */
+    function drawCanvasOverlay() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      const totalDist = calculateDistance(teePosition, greenPosition);
+      const isPar3 = totalDist < 200;
+
+      const pTee = map.project(teePosition);
+      const pGreen = map.project(greenPosition);
+
+      // 1. HAJONTAYMPYRÄT TÄSMÄLLEEN TÄHTÄIMEN/LIPUN KESKELLÄ
+      const distanceForDispersion = isPar3 ? totalDist : (targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDist);
+      
+      const r5Point = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], distanceForDispersion * 0.05, 90));
+      const r7Point = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], distanceForDispersion * 0.07, 90));
+      
+      const pxRadius5 = Math.abs(r5Point.x - pGreen.x);
+      const pxRadius7 = Math.abs(r7Point.x - pGreen.x);
+
+      // Ympyrä 5%
+      ctx.beginPath();
+      ctx.arc(pGreen.x, pGreen.y, pxRadius5, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.15)';
+      ctx.fill();
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 4]);
+      ctx.stroke();
+
+      // Ympyrä 7%
+      ctx.beginPath();
+      ctx.arc(pGreen.x, pGreen.y, pxRadius7, 0, 2 * Math.PI);
+      ctx.fillStyle = 'rgba(248, 113, 113, 0.08)';
+      ctx.fill();
+      ctx.strokeStyle = '#f87171';
+      ctx.lineWidth = 1.2;
+      ctx.setLineDash([3, 3]);
+      ctx.stroke();
+
+      ctx.setLineDash([]); // Palautetaan yhtenäinen viiva
+
+      if (isPar3) {
+        // Par 3 Suora linja tiiltä viheriölle
+        ctx.beginPath();
+        ctx.moveTo(pTee.x, pTee.y);
+        ctx.lineTo(pGreen.x, pGreen.y);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+      } else {
+        const activeTarget = targetPosition || greenPosition;
+        const pTarget = map.project(activeTarget);
+        const distTee = calculateDistance(teePosition, activeTarget);
+        const bearing = getBearing(teePosition, activeTarget);
+
+        // Keskijooni
+        ctx.beginPath();
+        ctx.moveTo(pTee.x, pTee.y);
+        ctx.lineTo(pTarget.x, pTarget.y);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // Nuolenkärki kohteesta eteenpäin
+        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 40, bearing));
+        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 30, bearing + 20));
+        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 30, bearing - 20));
+
+        ctx.beginPath();
+        ctx.moveTo(pTarget.x, pTarget.y);
+        ctx.lineTo(pArrowEnd.x, pArrowEnd.y);
+        ctx.moveTo(pLeftTip.x, pLeftTip.y);
+        ctx.lineTo(pArrowEnd.x, pArrowEnd.y);
+        ctx.lineTo(pRightTip.x, pRightTip.y);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        // SEKTORIVARSIT (ULKO- JA SISESEKTIOT)
+        drawSectorLineOnCanvas(teePosition, distTee, bearing, 0.2222, false);
+        drawSectorLineOnCanvas(teePosition, distTee, bearing, 0.1481, true);
+
+        // Katkoviiva kohteelta viheriölle
+        ctx.beginPath();
+        ctx.moveTo(pTarget.x, pTarget.y);
+        ctx.lineTo(pGreen.x, pGreen.y);
+        ctx.strokeStyle = '#ef4444';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.stroke();
+        ctx.setLineDash([]);
+
+        // KAARIVIIVAT JA SG-TEKSTIT ALKAEN 140 METRISTÄ
+        if (distTee >= 140) {
+          const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
+
+          for (let d = 140; d <= distTee; d += 20) {
+            ctx.beginPath();
+            const steps = 12;
+            for (let i = 0; i <= steps; i++) {
+              const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
+              const pt = map.project(getDestinationPoint(teePosition[0], teePosition[1], d, currentAngle));
+              if (i === 0) ctx.moveTo(pt.x, pt.y);
+              else ctx.lineTo(pt.x, pt.y);
+            }
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.7)';
+            ctx.lineWidth = 1.2;
+            ctx.stroke();
+
+            // SG Teksti kaarella
+            const centerPointOnArc = getDestinationPoint(teePosition[0], teePosition[1], d, bearing);
+            const pSg = map.project(centerPointOnArc);
+            const remToGreen = calculateDistance(centerPointOnArc, greenPosition);
+            const sgVal = calculateSGValue(d, remToGreen);
+            const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
+
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = '#ffffff';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 4;
+            ctx.fillText(sgText, pSg.x, pSg.y + 4);
+            ctx.shadowBlur = 0;
+          }
+        }
+      }
+    }
+
+    function drawSectorLineOnCanvas(teePos, distTee, bearing, ratio, isDashed) {
+      const deltaAngle = Math.atan(ratio / 2) * (180 / Math.PI);
+      const steps = 12;
+
+      ctx.beginPath();
+      const pStart = map.project(teePos);
+      ctx.moveTo(pStart.x, pStart.y);
+
+      for (let i = 0; i <= steps; i++) {
+        const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
+        const pt = map.project(getDestinationPoint(teePos[0], teePos[1], distTee, currentAngle));
+        ctx.lineTo(pt.x, pt.y);
+      }
+      ctx.lineTo(pStart.x, pStart.y);
+
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.8;
+      if (isDashed) ctx.setLineDash([5, 5]);
+      else ctx.setLineDash([]);
+      ctx.stroke();
+      ctx.setLineDash([]);
     }
 
     function totalIsPar3() {
@@ -754,7 +881,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/5.3.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/5.4.0' }
         });
         const results = await response.json();
 
@@ -813,6 +940,7 @@
       updateModeButtonsUI();
     }
 
+    /* LUKITUSPAINIKE: VAKAUTETTU LUKITUS, EI SKAALAUDE */
     function toggleTargetMode(e) {
       triggerButtonGuard(e);
 
@@ -1159,40 +1287,7 @@
       document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
-    /* HAJONTAYMPYRÄN KESKIPISTE ANKKUROITU TÄSMÄLLEEN LIPUN KOHDALLE */
-    function createCircleGeoJSON(centerLngLat, radiusMeters) {
-      const points = 64;
-      const coords = [];
-      for (let i = 0; i < points; i++) {
-        const bearing = (i * 360) / points;
-        coords.push(getDestinationPoint(centerLngLat[0], centerLngLat[1], radiusMeters, bearing));
-      }
-      coords.push(coords[0]);
-      return coords;
-    }
-
-    function getArcSectorPoints(teePos, distTee, bearing, ratio) {
-      const deltaAngle = Math.atan(ratio / 2) * (180 / Math.PI); 
-      const points = [teePos];
-      
-      const steps = 12; 
-      for (let i = 0; i <= steps; i++) {
-        const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
-        points.push(getDestinationPoint(teePos[0], teePos[1], distTee, currentAngle));
-      }
-      points.push(teePos);
-      return points;
-    }
-
     function updateCalculations() {
-      if (!map.getSource('lines-source')) return;
-
-      const lineFeatures = [];
-      const dispersionFeatures = [];
-
-      arcSgMarkers.forEach(m => m.remove());
-      arcSgMarkers = [];
-
       const totalDist = calculateDistance(teePosition, greenPosition);
       document.getElementById('dist-total').innerText = totalDist;
 
@@ -1200,132 +1295,23 @@
 
       if (isPar3) {
         if (targetMarker) targetMarker.remove();
-
-        lineFeatures.push({
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: [teePosition, greenPosition] },
-          properties: { color: '#ffffff', width: 2 }
-        });
-
         if (sectorWindMarker) sectorWindMarker.remove();
       } else {
         const currentTargetOrGreen = targetPosition || greenPosition;
-        
-        if (!targetMarker._map) targetMarker.addTo(map);
-        targetMarker.setLngLat(currentTargetOrGreen);
+        if (targetMarker && !targetMarker._map) targetMarker.addTo(map);
+        if (targetMarker) targetMarker.setLngLat(currentTargetOrGreen);
 
-        const distTee = calculateDistance(teePosition, currentTargetOrGreen);
-        const activeTargetPos = currentTargetOrGreen;
-        const bearing = getBearing(teePosition, activeTargetPos);
-
-        // Keskijooni
-        lineFeatures.push({
-          type: 'Feature',
-          geometry: { type: 'LineString', coordinates: [teePosition, activeTargetPos] },
-          properties: { color: '#ffffff', width: 2 }
-        });
-
-        // Nuolen kärki
-        const arrowEnd = getDestinationPoint(activeTargetPos[0], activeTargetPos[1], 50, bearing);
-        const leftTip = getDestinationPoint(arrowEnd[0], arrowEnd[1], 10, bearing + 155);
-        const rightTip = getDestinationPoint(arrowEnd[0], arrowEnd[1], 10, bearing - 155);
-
-        lineFeatures.push(
-          {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: [activeTargetPos, arrowEnd] },
-            properties: { color: '#ffffff', width: 2 }
-          },
-          {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: [leftTip, arrowEnd, rightTip] },
-            properties: { color: '#ffffff', width: 2 }
-          }
-        );
-
-        // SEKTORIT (TÄYSIN NÄKYVÄT VIIVAT)
-        lineFeatures.push(
-          {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: getArcSectorPoints(teePosition, distTee, bearing, 0.2222) },
-            properties: { color: '#ffffff', width: 2 }
-          },
-          {
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: getArcSectorPoints(teePosition, distTee, bearing, 0.1481) },
-            properties: { color: '#ffffff', width: 2, dash: [4, 4] }
-          }
-        );
-
-        // Viiva Kohteelta Lipulle
-        if (targetPosition) {
-          lineFeatures.push({
-            type: 'Feature',
-            geometry: { type: 'LineString', coordinates: [targetPosition, greenPosition] },
-            properties: { color: '#ef4444', width: 2, dash: [3, 3] }
-          });
-        }
-
-        // Kaariviivat ja SG-merkit (ALKAEN 140 METRISTÄ)
-        if (distTee >= 140) {
-          const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
-
-          for (let d = 140; d <= distTee; d += 20) {
-            const arcPoints = [];
-            const steps = 10;
-            for (let i = 0; i <= steps; i++) {
-              const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
-              arcPoints.push(getDestinationPoint(teePosition[0], teePosition[1], d, currentAngle));
-            }
-
-            lineFeatures.push({
-              type: 'Feature',
-              geometry: { type: 'LineString', coordinates: arcPoints },
-              properties: { color: '#ffffff', width: 1.2 }
-            });
-
-            const centerPointOnArc = getDestinationPoint(teePosition[0], teePosition[1], d, bearing);
-            const remToGreen = calculateDistance(centerPointOnArc, greenPosition);
-            const sgVal = calculateSGValue(d, remToGreen);
-            const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
-
-            const el = document.createElement('div');
-            el.className = 'arc-sg-badge';
-            el.innerText = sgText;
-
-            const m = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(centerPointOnArc).addTo(map);
-            arcSgMarkers.push(m);
-          }
-        }
-
-        renderSectorWindBadge(activeTargetPos, bearing);
+        renderSectorWindBadge(currentTargetOrGreen, getBearing(teePosition, currentTargetOrGreen));
       }
 
-      // HAJONTAYMPYRÄT TÄSMÄLLEEN LIPUN KESKELLÄ (5% / 7%)
-      const distanceForDispersion = isPar3 ? totalDist : (targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDist);
-
-      dispersionFeatures.push(
-        {
-          type: 'Feature',
-          geometry: { type: 'Polygon', coordinates: [createCircleGeoJSON(greenPosition, distanceForDispersion * 0.05)] },
-          properties: { color: '#facc15', fillColor: '#facc15', fillOpacity: 0.12 }
-        },
-        {
-          type: 'Feature',
-          geometry: { type: 'Polygon', coordinates: [createCircleGeoJSON(greenPosition, distanceForDispersion * 0.07)] },
-          properties: { color: '#f87171', fillColor: '#f87171', fillOpacity: 0.05 }
-        }
-      );
-
-      map.getSource('lines-source').setData({ type: 'FeatureCollection', features: lineFeatures });
-      map.getSource('dispersion-source').setData({ type: 'FeatureCollection', features: dispersionFeatures });
-
+      drawCanvasOverlay();
       updateBottomPanelMetrics();
+
       const activeTargetPos = isPar3 ? greenPosition : (targetPosition || greenPosition);
       fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
     }
 
-    /* KOSKETUKSEN ASETUS PAINIKKEEN MUKAAN */
+    /* KOSKETUS VAIN OMAN TILOJAN MUKAAN */
     function getOffsetLngLatFromPoint(point, offsetYPixels = 60) {
       const targetPoint = new maplibregl.Point(point.x, point.y - offsetYPixels);
       return map.unproject(targetPoint);
@@ -1345,9 +1331,14 @@
         greenPosition = coords;
         greenMarker.setLngLat(coords);
         renderWindOverlayIcons();
-      } else if (currentMode === 'target' && !isTargetLocked) {
-        targetPosition = coords;
-        targetMarker.setLngLat(coords);
+      } else if (currentMode === 'target') {
+        if (!isTargetLocked) {
+          targetPosition = coords;
+        } else {
+          const newBearing = getBearing(teePosition, coords);
+          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
+        }
+        if (targetMarker) targetMarker.setLngLat(targetPosition);
       }
       updateCalculations();
     });
