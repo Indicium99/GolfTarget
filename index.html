@@ -40,15 +40,15 @@
     }
 
     #map {
-      height: 150%;
-      width: 150%;
+      height: 200%;
+      width: 200%;
       position: absolute;
-      top: -25%;
-      left: -25%;
+      top: -50%;
+      left: -50%;
       cursor: crosshair;
       background-color: #0f172a;
       touch-action: none;
-      transform-origin: center center;
+      transform-origin: 50% 50%;
       will-change: transform;
     }
 
@@ -342,7 +342,7 @@
   <div id="map-wrapper">
     <div id="map"></div>
 
-    <div class="vertical-version-tag">v3.5.0</div>
+    <div class="vertical-version-tag">v3.8.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -357,7 +357,6 @@
       <button id="btn-zoom-in" class="icon-btn" onclick="zoomInMap(event)" title="Lähennä">+</button>
       <button id="btn-zoom-out" class="icon-btn" onclick="zoomOutMap(event)" title="Loitonna">−</button>
       
-      <!-- KOMPASSIPAINIKE JA PYÖRITYKSEN LUKITUS -->
       <button id="btn-reset-rotation" class="icon-btn" onclick="toggleRotationLock(event)" title="Pohjoinen ylös / Pyörityksen lukitus">
         <div class="btn-compass-wrapper">
           <svg id="compass-needle" class="compass-needle-svg" viewBox="0 0 32 32">
@@ -415,7 +414,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v3.5.0";
+    const APP_VERSION = "v3.8.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -576,37 +575,29 @@
     function toggleRotationLock(e) {
       triggerButtonGuard(e);
       if (isRotationLocked) {
-        // Lukituksen avaaminen
         isRotationLocked = false;
         document.getElementById('compass-lock-badge').innerText = "";
       } else {
-        // Nollataan pohjoiseen ja lukitaan pyöritys
         setMapRotation(0);
         isRotationLocked = true;
         document.getElementById('compass-lock-badge').innerText = "🔒";
       }
     }
 
-    // KORJATTU SORMEN/HIREN SIIRRON MUUNNOS RUUDUN JA KARTAN PYÖRITYKSEN SUHTEEN
     function getScreenTouchToLatLng(containerPoint, offsetYPixels = 60) {
-      const mapSize = map.getSize();
-      const centerX = mapSize.x / 2;
-      const centerY = mapSize.y / 2;
+      const wrapperElem = document.getElementById('map-wrapper');
+      const rect = wrapperElem.getBoundingClientRect();
 
-      // 1. Siirretään kosketuskohtaa pystysuorassa ylöspäin ruudun suhteen (60px)
-      const screenX = containerPoint.x;
-      const screenY = containerPoint.y - offsetYPixels;
+      const centerX = rect.width / 2;
+      const centerY = rect.height / 2;
 
-      // 2. Keskipiste-ero ruudulla
-      const dx = screenX - centerX;
-      const dy = screenY - centerY;
+      const dx = containerPoint.x - centerX;
+      const dy = (containerPoint.y - offsetYPixels) - centerY;
 
-      // 3. Kumotaan kartan CSS-pyöritys vastakkaisella kulmalla
       const rad = (-mapRotationDeg * Math.PI) / 180;
       const unrotatedX = centerX + (dx * Math.cos(rad) - dy * Math.sin(rad));
       const unrotatedY = centerY + (dx * Math.sin(rad) + dy * Math.cos(rad));
 
-      // 4. Lasketaan maantieteellinen koordinaatti korjatusta pisteestä
       return map.containerPointToLatLng(L.point(unrotatedX, unrotatedY));
     }
 
@@ -619,13 +610,14 @@
       markerElement.style.pointerEvents = 'auto';
 
       function onTouchStart(e) {
+        if (e.touches && e.touches.length > 1) return;
         isDragging = true;
         isInteractingWithUI = true;
         e.stopPropagation();
       }
 
       function onTouchMove(e) {
-        if (!isDragging || !e.touches || e.touches.length === 0) return;
+        if (!isDragging || isMultiTouchActive || !e.touches || e.touches.length > 1) return;
         e.preventDefault();
         e.stopPropagation();
 
@@ -715,7 +707,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/3.5.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/3.8.0' }
         });
         const results = await response.json();
 
@@ -1167,13 +1159,14 @@
       arrowGroup.addLayer(head);
     }
 
+    // KAARIVIIVAT ALKAVAT NYT 140 METRISTÄ (PAIVITETTY v3.8.0)
     function drawDistanceArcsByBearing(teePos, distTee, bearing, maxRatio) {
       distanceArcGroup.clearLayers();
-      if (distTee < 100) return;
+      if (distTee < 140) return;
 
       const deltaAngle = Math.atan(maxRatio / 2) * (180 / Math.PI);
 
-      for (let d = 100; d <= distTee; d += 20) {
+      for (let d = 140; d <= distTee; d += 20) {
         const arcPoints = [];
         const steps = 6;
         for (let i = 0; i <= steps; i++) {
@@ -1293,12 +1286,14 @@
     }
 
     wrapperElement.addEventListener('touchstart', function(e) {
-      if (e.touches.length === 2) {
-        if (isRotationLocked) return; // Ei pyöritetä, jos lukittu
+      if (e.touches.length >= 2) {
         isMultiTouchActive = true;
         clearTimeout(multiTouchCooldownTimer);
-        initialTouchAngle = getTouchAngle(e.touches[0], e.touches[1]);
-        initialRotationDeg = mapRotationDeg;
+        
+        if (!isRotationLocked) {
+          initialTouchAngle = getTouchAngle(e.touches[0], e.touches[1]);
+          initialRotationDeg = mapRotationDeg;
+        }
       }
     }, { passive: false });
 
@@ -1306,9 +1301,12 @@
       if (e.touches.length < 2) {
         initialTouchAngle = null;
         clearTimeout(multiTouchCooldownTimer);
-        multiTouchCooldownTimer = setTimeout(() => {
-          isMultiTouchActive = false;
-        }, 300);
+        
+        if (e.touches.length === 0) {
+          multiTouchCooldownTimer = setTimeout(() => {
+            isMultiTouchActive = false;
+          }, 400);
+        }
       }
     }, { passive: false });
 
@@ -1342,7 +1340,9 @@
         return;
       }
 
-      const coords = [e.latlng.lat, e.latlng.lng];
+      const containerPoint = map.mouseEventToContainerPoint(originalEvent);
+      const latlng = getScreenTouchToLatLng(containerPoint, 0);
+      const coords = [latlng.lat, latlng.lng];
 
       if (currentMode === 'tee') {
         teePosition = coords;
