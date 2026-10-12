@@ -286,18 +286,15 @@
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
     }
 
-    /* SG KAARITAGI TEKSTI KARTALLA */
-    .arc-sg-badge {
-      background: rgba(15, 23, 42, 0.85);
-      border: 1px solid #38bdf8;
-      border-radius: 4px;
-      color: #38bdf8;
-      font-size: 10.5px;
-      font-weight: bold;
-      padding: 1px 3px;
+    /* PUHDAS VALKOINEN SG KAARI-LUKEMA ILMAN BOKSIA JA SELITTEITÄ */
+    .arc-sg-text-only {
+      color: #ffffff !important;
+      font-size: 12px !important;
+      font-weight: bold !important;
+      text-shadow: 0px 1px 3px #000000, 0px 0px 5px #000000;
       white-space: nowrap;
-      text-shadow: 0 1px 2px #000;
       pointer-events: none;
+      user-select: none;
     }
 
     .gps-user-marker {
@@ -317,7 +314,7 @@
 
   <div id="map">
     <!-- PYSTYSUORA VERSIOTIETO VASEMMASSA REUNASSA -->
-    <div class="vertical-version-tag">v3.1.0</div>
+    <div class="vertical-version-tag">v3.2.0</div>
 
     <!-- TIIVIS YLÄBANNERI -->
     <div class="top-header-banner" id="top-header">
@@ -380,7 +377,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v3.1.0";
+    const APP_VERSION = "v3.2.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -524,7 +521,7 @@
     const initialTargetDist = Math.min(250, Math.round(initialTotalDist * 0.75));
     targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
 
-    // KORJATTU TII JA LIPPU SORMEN YLÄPUOLELLA 60px SIIRTYMISEEN
+    // MARKKEREIDEN SIIRTO SORMEN YLÄPUOLELLE (60px OFFSET)
     function enableCustomOffsetDrag(marker, updatePosCallback) {
       let isDragging = false;
 
@@ -547,7 +544,6 @@
         const touch = e.touches[0];
         const containerPoint = map.mouseEventToContainerPoint(touch);
         
-        // 60px Nosto sormen yläpuolelle kaikille markkereille
         containerPoint.y -= 60;
 
         const newLatLng = map.containerPointToLatLng(containerPoint);
@@ -633,7 +629,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/3.1.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/3.2.0' }
         });
         const results = await response.json();
 
@@ -715,7 +711,6 @@
       updateCalculations();
     }
 
-    // GPS SATELLIITTI PAINIKE: AUTOMAATTINEN RATKAISU ETÄISYYDEN MUKAAN
     function toggleGPS(e) {
       triggerButtonGuard(e);
       const gpsBtn = document.getElementById('btn-gps-toggle');
@@ -749,13 +744,6 @@
 
             gpsBtn.classList.add('gps-active');
             setTeeBtn.style.display = "block";
-
-            // MITTAMINEN OMASTA SIJAINNISTA LIPULLE
-            const currentDistToGreen = calculateDistance(userGPSPosition, greenPosition);
-            if (currentDistToGreen < 210) {
-              targetPosition = null; // Automaattinen Par3 / hajontaympyrä suoraan lipulle
-            }
-
             updateCalculations();
           },
           function(error) {
@@ -980,9 +968,11 @@
 
     function updateBottomPanelMetrics() {
       const totalDistToGreen = calculateDistance(teePosition, greenPosition);
-      const activeTarget = targetPosition || greenPosition;
+      const isPar3 = totalDistToGreen < 200; // AUTOMATIIKKA ALLE 200M
+
+      const activeTarget = isPar3 ? greenPosition : (targetPosition || greenPosition);
       const distTee = calculateDistance(teePosition, activeTarget);
-      const distGreen = targetPosition ? calculateDistance(activeTarget, greenPosition) : totalDistToGreen;
+      const distGreen = isPar3 ? totalDistToGreen : (targetPosition ? calculateDistance(activeTarget, greenPosition) : totalDistToGreen);
       
       const sectorWidthInner = Math.round(distTee * 0.1481);
       const sectorWidthOuter = Math.round(distTee * 0.2222);
@@ -1054,8 +1044,8 @@
       document.getElementById('wind-text').innerHTML = windText;
       document.getElementById('temp-text').innerHTML = `🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
 
-      // HAJONTAYMPYRÄT 5% JA 7%
-      const distanceForDispersion = targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDistToGreen;
+      // HAJONTAYMPYRÄT 5% JA 7% LASKETAAN SUORAAN VALITULLA MATKALLA
+      const distanceForDispersion = isPar3 ? totalDistToGreen : (targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDistToGreen);
       
       greenDispersionCircle5.setRadius(distanceForDispersion * 0.05);
       greenDispersionCircle5.setLatLng(greenPosition);
@@ -1092,7 +1082,7 @@
       arrowGroup.addLayer(head);
     }
 
-    // KAARIVIIVAT 20M VÄLEIN JA STROKES GAINED (SG) TEKSTIT KARTALLA
+    // PUHTAAT VALKOISET SG-LUKEMAT KAARIVIIVOILLA ILMAN BOKSIA JA TEKSTEJÄ
     function drawDistanceArcsByBearing(teePos, distTee, bearing, maxRatio) {
       distanceArcGroup.clearLayers();
       if (distTee < 100) return;
@@ -1110,7 +1100,7 @@
         const arcLine = L.polyline(arcPoints, {color: '#ffffff', weight: 1, opacity: 0.5});
         distanceArcGroup.addLayer(arcLine);
 
-        // LASKETAAN SG TÄLLE KAARI ETÄISYYDELLE JA LISÄTÄÄN TEKSTI
+        // PELKKÄ VALKOINEN NUMERO TÄSMÄLLEEN KAAREN KESKIKOHDASSA
         const centerPointOnArc = getDestinationPoint(teePos[0], teePos[1], d, bearing);
         const remToGreen = calculateDistance(centerPointOnArc, greenPosition);
         const sgVal = calculateSGValue(d, remToGreen);
@@ -1118,9 +1108,9 @@
 
         const badgeIcon = L.divIcon({
           className: 'clean-wind-arrow-wrapper',
-          html: `<div class="arc-sg-badge">${d}m: SG ${sgText}</div>`,
-          iconSize: [60, 16],
-          iconAnchor: [-10, 8]
+          html: `<div class="arc-sg-text-only">${sgText}</div>`,
+          iconSize: [40, 16],
+          iconAnchor: [20, 8]
         });
 
         const badgeMarker = L.marker(centerPointOnArc, { icon: badgeIcon, interactive: false });
@@ -1138,7 +1128,14 @@
         const totalDist = calculateDistance(teePosition, greenPosition);
         document.getElementById('dist-total').innerText = totalDist;
 
-        if (!targetPosition) {
+        const isPar3 = totalDist < 200; // PAR 3 AUTOTUNNISTUS KOKONAISMATKASTA
+
+        if (isPar3) {
+          // PAR 3 VÄYLÄ -> VÄLISEKTORI POIS, HAJONTAYMPYRÄT SUORAAN LIPULLE
+          if (targetMarker) {
+            map.removeLayer(targetMarker);
+            targetMarker = null;
+          }
           centerLine.setLatLngs([teePosition, greenPosition]);
           outerSectorPolyline.setLatLngs([]);
           innerSectorPolyline.setLatLngs([]);
@@ -1150,35 +1147,40 @@
           updateBottomPanelMetrics();
           fetchElevationDifferenceDebounced(teePosition, greenPosition);
         } else {
+          // PAR 4 / 5 VÄYLÄ -> SEKTORI NÄKYVIIN NORMAALISTI
           const currentTargetOrGreen = targetPosition || greenPosition;
           centerLine.setLatLngs([teePosition, currentTargetOrGreen]);
 
-          const distTee = calculateDistance(teePosition, targetPosition);
+          const distTee = calculateDistance(teePosition, targetPosition || greenPosition);
 
-          if (!targetMarker) {
+          if (!targetMarker && targetPosition) {
             targetMarker = L.marker(targetPosition, {icon: golfTargetIcon}).addTo(map);
-          } else {
+          } else if (targetMarker && targetPosition) {
             targetMarker.setLatLng(targetPosition);
           }
 
           updateBottomPanelMetrics();
-          fetchElevationDifferenceDebounced(teePosition, targetPosition);
+          const activeTargetPos = targetPosition || greenPosition;
+          fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
 
-          const bearing = getBearing(teePosition, targetPosition);
+          const bearing = getBearing(teePosition, activeTargetPos);
 
           outerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, distTee, bearing, 0.2222));
           innerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, distTee, bearing, 0.1481));
 
           drawDistanceArcsByBearing(teePosition, distTee, bearing, 0.2222);
-          drawCenterArrowExtension(targetPosition, bearing, 50);
-          renderSectorWindBadge(targetPosition, bearing);
+          drawCenterArrowExtension(activeTargetPos, bearing, 50);
+          renderSectorWindBadge(activeTargetPos, bearing);
 
-          lineToGreen.setLatLngs([targetPosition, greenPosition]);
+          if (targetPosition) {
+            lineToGreen.setLatLngs([targetPosition, greenPosition]);
+          } else {
+            lineToGreen.setLatLngs([]);
+          }
         }
       });
     }
 
-    // SEKTORIN SIIRRON OFFSET-KORJAUS (60px SORMEN YLÄPUOLELLE)
     function handlePointerMoveWithOffset(e) {
       if (isInteractingWithUI || isMultiTouchActive) return;
 
