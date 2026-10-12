@@ -193,8 +193,8 @@
 
     .length-badge {
       background: rgba(15, 23, 42, 0.95);
-      border: 2.5px solid #facc15;
-      color: #facc15;
+      border: 2.5px solid #ffffff;
+      color: #ffffff;
       font-size: 16px;
       font-weight: bold;
       padding: 6px 10px;
@@ -236,7 +236,7 @@
         <button id="btn-gps-toggle" class="icon-btn btn-gps" onclick="toggleGPS(event)" title="Oma Sijainti">🧭</button>
         <button id="btn-tee" class="icon-btn btn-tee active-mode" onclick="setMode('tee', event)" title="Tiipaikka">📍</button>
         <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green', event)" title="Viheriö">⛳</button>
-        <button id="btn-target" class="icon-btn btn-target" onclick="toggleTargetMode(event)" title="Kohde">🎯</button>
+        <button id="btn-target" class="icon-btn btn-target" onclick="toggleTargetMode(event)" title="Kohde / Lukitus">🎯</button>
       </div>
     </div>
   </div>
@@ -281,7 +281,6 @@
     let isTargetLocked = false;
     let currentMode = 'tee'; 
     let currentElevationDiffMeters = 0;
-    let currentElevationText = "-";
     let elevationTimeout = null;
 
     let watchId = null;
@@ -382,7 +381,9 @@
       const searchQuery = query.toLowerCase().includes("golf") ? query : `${query} golf`;
 
       try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`);
+        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
+          headers: { 'User-Agent': 'MasterGolfApp/1.2.0' }
+        });
         const results = await response.json();
 
         if (results && results.length > 0) {
@@ -453,12 +454,19 @@
         if (isTargetLocked) {
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(teePosition, activeTarget);
+          
+          // Lukitettaessa siirretään sektori heti kohdalla olevan suunnan mukaan
+          const centerLat = map.getCenter();
+          const currentBearing = getBearing(teePosition, [centerLat.lat, centerLat.lng]);
+          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, currentBearing);
+          
           map.dragging.disable();
         } else {
           map.dragging.disable();
         }
       }
       updateModeButtonsUI();
+      updateCalculations();
     }
 
     function toggleGPS(e) {
@@ -568,7 +576,7 @@
           currentWindSpeed = Math.round(data.current.wind_speed_10m * 10) / 10;
           currentWindGusts = Math.round(data.current.wind_gusts_10m * 10) / 10;
           currentWindDirection = data.current.wind_direction_10m;
-          currentTempC = Math.round(data.current.temperature_2m);
+          currentTempC = Math.round(data.current.temperature_2m); // Pyöristetään kokonaislukuun määrittelyn mukaisesti
 
           renderWindOverlayIcons();
           updateCalculations();
@@ -833,7 +841,6 @@
     }, { passive: false });
 
     map.on('click', function(e) {
-      // Tarkistetaan ettei klikkaus tapahtunut kontrollien kohdalla
       const originalEvent = e.originalEvent;
       if (originalEvent && (controlsContainer.contains(originalEvent.target) || searchContainer.contains(originalEvent.target))) {
         return;
