@@ -42,20 +42,39 @@
       background-color: #0f172a;
       display: flex;
       flex-direction: column;
-      justify-content: space-around;
+      justify-content: center;
       border-top: 2px solid #38bdf8;
       z-index: 2000;
     }
 
-    /* HAKU- JA PAINIKEKONTROLLIT VASEMMASSA YLÄKULMASSA */
-    .map-controls-left {
+    /* VÄYLÄN PITUUS JA VERSIO YLHÄÄLLÄ KESKELLÄ KARTAN PÄÄLLÄ */
+    .top-header-banner {
       position: absolute;
       top: 12px;
-      left: 12px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1.5px solid #38bdf8;
+      border-radius: 10px;
+      padding: 6px 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+      font-size: 13px;
+      font-weight: bold;
+      color: #ffffff;
+      white-space: nowrap;
+      pointer-events: auto;
+    }
+
+    /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA */
+    .map-controls-right {
+      position: absolute;
+      top: 12px;
+      right: 12px;
       z-index: 9999;
       display: flex;
       flex-direction: column;
-      align-items: flex-start;
+      align-items: flex-end;
       gap: 8px;
       pointer-events: auto;
     }
@@ -64,13 +83,14 @@
       position: relative;
       display: flex;
       align-items: center;
+      justify-content: flex-end;
     }
 
-    /* LAAJENEVA HAKUKENTTÄ PAINIKKEEN VIEREEN */
+    /* LAAJENEVA HAKUKENTTÄ PAINIKKEEN VASEMMALLE PUOLELLE */
     .search-expandable {
       display: none;
       position: absolute;
-      left: 54px;
+      right: 54px;
       top: 0;
       background: rgba(15, 23, 42, 0.95);
       border: 2px solid #0284c7;
@@ -92,7 +112,7 @@
       padding: 6px 8px;
       font-size: 14px;
       outline: none;
-      width: 160px;
+      width: 150px;
     }
     .search-input::placeholder {
       color: #94a3b8;
@@ -107,19 +127,6 @@
       font-size: 13px;
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
-    }
-
-    /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA */
-    .map-controls-right {
-      position: absolute;
-      top: 12px;
-      right: 12px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 8px;
-      pointer-events: auto;
     }
 
     /* IKONIPAINIKKEET (46px x 46px) */
@@ -246,15 +253,9 @@
 <body>
 
   <div id="map">
-    <!-- HAKU- SIVUBUUTTONI VASEMMALLA -->
-    <div class="map-controls-left" id="search-controls">
-      <div class="search-wrapper">
-        <button id="btn-search-toggle" class="icon-btn btn-search" onclick="toggleSearchBox(event)" title="Hae kenttää">🔍</button>
-        <div class="search-expandable" id="search-box">
-          <input type="text" id="course-search-input" class="search-input" placeholder="Hae..." onkeydown="if(event.key==='Enter') searchGolfCourse()" />
-          <button class="search-btn" onclick="searchGolfCourse()">Hae</button>
-        </div>
-      </div>
+    <!-- VÄYLÄN PITUUS JA VERSIO YLHÄÄLLÄ KESKELLÄ -->
+    <div class="top-header-banner" id="top-header">
+      📍 Tii ➔ ⛳ Väylä: <span id="dist-total" style="color:#38bdf8;">-</span> m <span style="color:#facc15; font-weight: bold; margin-left: 4px;">(v1.2.0)</span>
     </div>
 
     <!-- PAINIKE-KONTROLLIT OIKEALLA -->
@@ -266,6 +267,15 @@
         <button id="btn-tee" class="icon-btn btn-tee active-mode" onclick="setMode('tee', event)" title="Tiipaikka">📍</button>
         <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green', event)" title="Viheriö">⛳</button>
         <button id="btn-target" class="icon-btn btn-target" onclick="toggleTargetMode(event)" title="Kohde / Lukitus">🎯</button>
+
+        <!-- HAKUPAINIKE MUITEN PAINIKKEIDEN ALAPUOLELLA -->
+        <div class="search-wrapper" id="search-controls">
+          <button id="btn-search-toggle" class="icon-btn btn-search" onclick="toggleSearchBox(event)" title="Hae kenttää">🔍</button>
+          <div class="search-expandable" id="search-box">
+            <input type="text" id="course-search-input" class="search-input" placeholder="Hae kenttää..." onkeydown="if(event.key==='Enter') searchGolfCourse()" />
+            <button class="search-btn" onclick="searchGolfCourse()">Hae</button>
+          </div>
+        </div>
       </div>
     </div>
   </div>
@@ -287,11 +297,6 @@
         <span>Korkeusero: <span id="elevation-diff">-</span></span>
         <span>Sektori: <span id="sector-width">-</span></span>
       </div>
-    </div>
-
-    <div style="display:flex; justify-content:space-between; font-size: 14px; color: #94a3b8; font-family: monospace;">
-      <span>📍 Tii ➔ ⛳ Koko väylä: <b id="dist-total" style="color:#38bdf8;">-</b> m</span>
-      <span style="color:#facc15; font-weight: bold;">v1.2.0</span>
     </div>
   </div>
 
@@ -329,9 +334,9 @@
 
     // ESTETÄÄN PAINIKKEIDEN PAINALLUSTEN VUOTAMINEN KARTALLE
     const controlsContainer = document.getElementById('map-controls');
-    const searchContainer = document.getElementById('search-controls');
+    const headerContainer = document.getElementById('top-header');
 
-    [controlsContainer, searchContainer].forEach(container => {
+    [controlsContainer, headerContainer].forEach(container => {
       L.DomEvent.disableClickPropagation(container);
       L.DomEvent.disableScrollPropagation(container);
       ['click', 'dblclick', 'mousedown', 'mouseup', 'touchstart', 'touchend'].forEach(evt => {
@@ -482,30 +487,33 @@
       updateModeButtonsUI();
     }
 
+    /* KORJATTU LUKITUSTILA: SEKTORI EI SIIRRY PAINIKETTA PAINETTAESSA */
     function toggleTargetMode(e) {
       if (e) {
         e.stopPropagation();
         if (e.preventDefault) e.preventDefault();
       }
+
       if (currentMode !== 'target') {
+        // Siirrytään Target-tilaan ensimmäistä kertaa (auki)
         currentMode = 'target';
         isTargetLocked = false;
         map.dragging.disable();
       } else {
+        // Mikäli ollaan jo target-tilassa, vaihdetaan lukitustilaa (🔒 <-> 🎯)
         isTargetLocked = !isTargetLocked;
+
         if (isTargetLocked) {
+          // Lukitaan etäisyys nykyiseen kohteeseen
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(teePosition, activeTarget);
-          
-          const centerLat = map.getCenter();
-          const currentBearing = getBearing(teePosition, [centerLat.lat, centerLat.lng]);
-          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, currentBearing);
-          
           map.dragging.disable();
         } else {
+          // Poistetaan lukitus -> pidetään sektori entisessä kohdassaan
           map.dragging.disable();
         }
       }
+
       updateModeButtonsUI();
       updateCalculations();
     }
@@ -883,7 +891,7 @@
 
     map.on('click', function(e) {
       const originalEvent = e.originalEvent;
-      if (originalEvent && (controlsContainer.contains(originalEvent.target) || searchContainer.contains(originalEvent.target))) {
+      if (originalEvent && (controlsContainer.contains(originalEvent.target) || headerContainer.contains(originalEvent.target))) {
         return;
       }
 
