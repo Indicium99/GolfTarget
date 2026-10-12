@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="fi">
 <head>
@@ -52,6 +53,11 @@
       z-index: 2000;
     }
 
+    /* PIILOTETAAN MAP DATA / LEAFLET ATTRIBUUTIOT TEKSTIT */
+    .leaflet-control-attribution {
+      display: none !important;
+    }
+
     /* PYSTYSUORA VERSIOTIETO VASEMMASSA REUNASSA */
     .vertical-version-tag {
       position: absolute;
@@ -97,6 +103,18 @@
       margin-top: 3px;
       border-top: 1px dashed #334155;
       padding-top: 3px;
+    }
+
+    /* ZOOM-PAINIKE RYHMÄ VASEMMALLA YLÄKULMASSA */
+    .map-controls-left-zoom {
+      position: absolute;
+      top: 10px;
+      left: 10px;
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: auto;
     }
 
     /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA */
@@ -161,7 +179,7 @@
       -webkit-tap-highlight-color: transparent;
     }
 
-    /* IKONIPAINIKKEET JA ZOOM PAINIKE-RYHMÄ */
+    /* IKONIPAINIKKEET */
     .icon-buttons-group {
       display: flex;
       flex-direction: column;
@@ -292,7 +310,7 @@
 
   <div id="map">
     <!-- PYSTYSUORA VERSIOTIETO VASEMMASSA REUNASSA -->
-    <div class="vertical-version-tag">v2.8.0</div>
+    <div class="vertical-version-tag">v2.9.0</div>
 
     <!-- TIIVIS YLÄBANNERI -->
     <div class="top-header-banner" id="top-header">
@@ -304,15 +322,17 @@
       </div>
     </div>
 
+    <!-- ZOOM-PAINIKKEET VASEMMALLA YLHÄÄLLÄ -->
+    <div class="map-controls-left-zoom" id="left-controls">
+      <button id="btn-zoom-in" class="icon-btn btn-zoom" onclick="zoomInMap(event)" title="Lähennä">+</button>
+      <button id="btn-zoom-out" class="icon-btn btn-zoom" onclick="zoomOutMap(event)" title="Loitonna">−</button>
+    </div>
+
     <!-- PAINIKE-KONTROLLIT OIKEALLA -->
     <div class="map-controls-right" id="map-controls">
       <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS(event)">Aseta Tii GPS 📍</button>
 
       <div class="icon-buttons-group">
-        <!-- OMAT PARANNETUT ZOOM-PAINIKE KONTROLLIT -->
-        <button id="btn-zoom-in" class="icon-btn btn-zoom" onclick="zoomInMap(event)" title="Lähennä">+</button>
-        <button id="btn-zoom-out" class="icon-btn btn-zoom" onclick="zoomOutMap(event)" title="Loitonna">−</button>
-        
         <button id="btn-gps-toggle" class="icon-btn btn-gps" onclick="toggleGPS(event)" title="Oma Sijainti">🧭</button>
         <button id="btn-tee" class="icon-btn btn-tee" onclick="setMode('tee', event)" title="Tiipaikka">📍</button>
         <button id="btn-green" class="icon-btn btn-green" onclick="setMode('green', event)" title="Viheriö">⛳</button>
@@ -353,7 +373,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v2.8.0";
+    const APP_VERSION = "v2.9.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -387,17 +407,18 @@
 
     const map = L.map('map', {
       maxZoom: 21,
-      zoomControl: false, // Poistetaan alkuperäinen Leaflet-pikkukontrolli
+      zoomControl: false,
       tap: false
     }).setView([60.260088, 24.680901], 17);
 
     map.dragging.disable();
 
     const controlsContainer = document.getElementById('map-controls');
+    const leftControlsContainer = document.getElementById('left-controls');
     const headerContainer = document.getElementById('top-header');
 
-    // ESTETÄÄN KAIKKI KARTTATAPAHTUMAT JA SIIRROT KÄYTTÖLIITTYMÄPANEELIEN ALUEELTA
-    [controlsContainer, headerContainer].forEach(container => {
+    // ESTETÄÄN SIIRROT PANEELIEN KOHDALLTA
+    [controlsContainer, leftControlsContainer, headerContainer].forEach(container => {
       L.DomEvent.disableClickPropagation(container);
       L.DomEvent.disableScrollPropagation(container);
       
@@ -466,13 +487,24 @@
     let outerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5}).addTo(map);
     let innerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5, dashArray: '5, 5'}).addTo(map);
     
-    let greenDispersionCircle = L.circle(greenPosition, {
+    // KAKSI SISÄKKÄISTÄ HAJONTAYMPYRÄÄ (5% JA 7%)
+    let greenDispersionCircle5 = L.circle(greenPosition, {
       radius: 10,
       color: '#facc15',
       weight: 1.5,
       dashArray: '4, 4',
       fillColor: '#facc15',
-      fillOpacity: 0.08,
+      fillOpacity: 0.1,
+      interactive: false
+    }).addTo(map);
+
+    let greenDispersionCircle7 = L.circle(greenPosition, {
+      radius: 14,
+      color: '#f87171',
+      weight: 1.2,
+      dashArray: '3, 3',
+      fillColor: '#f87171',
+      fillOpacity: 0.04,
       interactive: false
     }).addTo(map);
 
@@ -487,7 +519,6 @@
     const initialTargetDist = Math.min(250, Math.round(initialTotalDist * 0.75));
     targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
 
-    // KORJATUT LÄHENNYSS JA LOITONNUS FUNKTIOT
     function zoomInMap(e) {
       triggerButtonGuard(e);
       map.zoomIn();
@@ -498,7 +529,6 @@
       map.zoomOut();
     }
 
-    // KORJATTU MARKKEREIDEN SIIRTO SORMEN YLÄPUOLELLE (OFFSET DRAGGING)
     function attachOffsetDrag(marker, updatePosCallback) {
       let isDragging = false;
 
@@ -578,7 +608,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/2.8.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/2.9.0' }
         });
         const results = await response.json();
 
@@ -909,7 +939,7 @@
 
       const activeTarget = (isPar3 || !targetPosition) ? greenPosition : targetPosition;
       const distTee = calculateDistance(teePosition, activeTarget);
-      const distGreen = isPar3 ? 0 : calculateDistance(activeTarget, greenPosition);
+      const distGreen = isPar3 ? totalDistToGreen : calculateDistance(activeTarget, greenPosition);
       
       const sectorWidthInner = Math.round(distTee * 0.1481);
       const sectorWidthOuter = Math.round(distTee * 0.2222);
@@ -953,6 +983,7 @@
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
+      // KORJATTU YLÄBANNERIN NÄYTTÖ PAR 3:LLA (MOLEMMISSA TODELLINEN ETÄISYYS SUORAAN TIILTÄ LIPULLE)
       document.getElementById('top-dist-tee').innerText = distTee;
       document.getElementById('top-dist-green').innerText = distGreen;
       document.getElementById('sector-width').innerText = `${sectorWidthInner} / ${sectorWidthOuter}m`;
@@ -981,10 +1012,14 @@
       document.getElementById('wind-text').innerHTML = windText;
       document.getElementById('temp-text').innerHTML = `🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
 
+      // HAJONTAYMPYRÄT: 5% JA 7% LASKETAAN TIILTÄ LIPULLE (PAR 3) TAI KOHTEESTA LIPULLE (PAR 4/5)
       const distanceForDispersion = isPar3 ? totalDistToGreen : (targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDistToGreen);
-      const dispersionRadiusMeters = (distanceForDispersion * 0.05);
-      greenDispersionCircle.setRadius(dispersionRadiusMeters);
-      greenDispersionCircle.setLatLng(greenPosition);
+      
+      greenDispersionCircle5.setRadius(distanceForDispersion * 0.05);
+      greenDispersionCircle5.setLatLng(greenPosition);
+
+      greenDispersionCircle7.setRadius(distanceForDispersion * 0.07);
+      greenDispersionCircle7.setLatLng(greenPosition);
     }
 
     function getArcSectorPoints(teePos, distTee, bearing, ratio) {
@@ -1108,7 +1143,6 @@
       });
     }
 
-    // SIIRRON OFFSET-KORJAUS (45px SORMEN YLÄPUOLELLE)
     function handlePointerMoveWithOffset(e) {
       if (isInteractingWithUI || isMultiTouchActive) return;
 
@@ -1170,7 +1204,7 @@
       if (isInteractingWithUI || isMultiTouchActive) return;
 
       const originalEvent = e.originalEvent;
-      if (originalEvent && (controlsContainer.contains(originalEvent.target) || headerContainer.contains(originalEvent.target))) {
+      if (originalEvent && (controlsContainer.contains(originalEvent.target) || leftControlsContainer.contains(originalEvent.target) || headerContainer.contains(originalEvent.target))) {
         return;
       }
 
