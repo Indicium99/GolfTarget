@@ -362,7 +362,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.5.1</div>
+    <div class="vertical-version-tag">v6.5.2</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -435,7 +435,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.5.1";
+    const APP_VERSION = "v6.5.2";
     
     // API-AVAIMET
     const MML_API_KEY = "ee39819d-6c89-4482-929d-6ac518164967"; 
@@ -944,7 +944,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.5.1' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.5.2' }
         });
         const results = await response.json();
 
@@ -1190,7 +1190,7 @@
       sectorWindMarker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(badgePos).addTo(map);
     }
 
-    /* KORKEUSHAKU: MML (SUOMI 2M) + GOOGLE / OPEN-METEO (ULKOMAAT) + CACHING */
+    /* KORKEUSHAKU: MML (SUOMI 2M CORS-proxylla) + GOOGLE / OPEN-METEO (ULKOMAAT) + CACHING */
     async function getSinglePointElevation(lng, lat) {
       const cacheKey = `elev_${lng.toFixed(5)}_${lat.toFixed(5)}`;
       const cached = localStorage.getItem(cacheKey);
@@ -1208,20 +1208,25 @@
 
       if (isFinland && MML_API_KEY && MML_API_KEY !== "LIITÄ_MAANMITTAUSLAITOKSEN_API_AVAIN_TÄHÄN") {
         try {
-          const url = `https://avoin-paikkatieto.maanmittauslaitos.fi/elevation/v2/elevation/wgs84/${lat}/${lng}?api-key=${MML_API_KEY}`;
+          const rawMmlUrl = `https://avoin-paikkatieto.maanmittauslaitos.fi/elevation/v2/elevation/wgs84/${lat}/${lng}?api-key=${MML_API_KEY}`;
+          // Kierretään selaimen CORS-rajoitus corsproxy.io:n kautta
+          const url = `https://corsproxy.io/?${encodeURIComponent(rawMmlUrl)}`;
+
           const res = await fetch(url);
-          const data = await res.json();
-          if (data && data.elevation !== undefined) {
-            const elev = parseFloat(data.elevation);
-            localStorage.setItem(cacheKey, elev);
-            localStorage.setItem(`${cacheKey}_source`, 'MML');
-            
-            isMMLActive = true;
-            updateVersionTag();
-            return elev;
+          if (res.ok) {
+            const data = await res.json();
+            if (data && data.elevation !== undefined) {
+              const elev = parseFloat(data.elevation);
+              localStorage.setItem(cacheKey, elev);
+              localStorage.setItem(`${cacheKey}_source`, 'MML');
+              
+              isMMLActive = true;
+              updateVersionTag();
+              return elev;
+            }
           }
         } catch (e) {
-          console.warn("MML-haku epäonnistui, siirrytään varajärjestelmään.");
+          console.warn("MML-haku epäonnistui CORS/verkkovirheen takia, siirrytään varajärjestelmään.", e);
           isMMLActive = false;
           updateVersionTag();
         }
