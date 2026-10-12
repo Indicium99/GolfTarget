@@ -9,6 +9,8 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
+  <!-- Päivitetyt mobile web app -tägit (poistaa vanhentumisvaroituksen) -->
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Master Golf">
@@ -17,8 +19,8 @@
   <!-- MapLibre GL CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
-  <!-- Google Maps JavaScript API (ElevationService -käyttöä varten, ratkaisee CORS-ongelman) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs"></script>
+  <!-- Google Maps JavaScript API (Päivitetty loading=async -parametrilla) -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs&loading=async" async defer></script>
 
   <style>
     html, body {
@@ -365,7 +367,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.6.1</div>
+    <div class="vertical-version-tag">v6.6.3</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -438,8 +440,8 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.6.1";
-    let isGoogleActive = false;
+    const APP_VERSION = "v6.6.3";
+    let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
     let greenPosition = [24.680158, 60.258729]; 
@@ -519,7 +521,7 @@
     function updateVersionTag() {
       const versionTagElem = document.querySelector('.vertical-version-tag');
       if (versionTagElem) {
-        versionTagElem.innerText = isGoogleActive ? `${APP_VERSION} G-OK` : APP_VERSION;
+        versionTagElem.innerText = googleApiCallCount > 0 ? `${APP_VERSION} G (${googleApiCallCount})` : APP_VERSION;
       }
     }
 
@@ -617,6 +619,7 @@
         }
       });
 
+      updateVersionTag();
       updateCalculations();
 
       setTimeout(() => {
@@ -943,7 +946,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.6.1' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.6.3' }
         });
         const results = await response.json();
 
@@ -1195,10 +1198,6 @@
       const cached = localStorage.getItem(cacheKey);
       
       if (cached !== null) {
-        if (localStorage.getItem(`${cacheKey}_source`) === 'GOOGLE') {
-          isGoogleActive = true;
-          updateVersionTag();
-        }
         return parseFloat(cached);
       }
 
@@ -1220,22 +1219,19 @@
 
           const elev = parseFloat(elevationResult);
           localStorage.setItem(cacheKey, elev);
-          localStorage.setItem(`${cacheKey}_source`, 'GOOGLE');
 
-          isGoogleActive = true;
+          // Kasvatetaan Google API -laskuria
+          googleApiCallCount++;
+          localStorage.setItem("google_api_call_count", googleApiCallCount);
           updateVersionTag();
+
           return elev;
         } catch (status) {
-          console.warn("Google Elevation Service epäonnistui:", status, "- Siirrytään Open-Meteoon.");
-          isGoogleActive = false;
-          updateVersionTag();
+          console.warn("Google Elevation Service ei käytettävissä tai rajoitettu:", status, "- Siirrytään Open-Meteoon.");
         }
       }
 
       // VARAJÄRJESTELMÄ / OPEN-METEO
-      isGoogleActive = false;
-      updateVersionTag();
-
       try {
         const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
         const data = await res.json();
