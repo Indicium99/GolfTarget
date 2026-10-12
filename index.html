@@ -47,21 +47,44 @@
       z-index: 2000;
     }
 
-    /* HAKUKENTTÄ KARTAN VASEMMASSA YLÄKULMASSA */
-    .map-search-left {
+    /* HAKU- JA PAINIKEKONTROLLIT VASEMMASSA YLÄKULMASSA */
+    .map-controls-left {
       position: absolute;
       top: 12px;
       left: 12px;
       z-index: 9999;
       display: flex;
-      gap: 6px;
-      background: rgba(15, 23, 42, 0.92);
-      padding: 4px 8px;
-      border-radius: 10px;
-      border: 1.5px solid #38bdf8;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 8px;
       pointer-events: auto;
     }
+
+    .search-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+    }
+
+    /* LAAJENEVA HAKUKENTTÄ PAINIKKEEN VIEREEN */
+    .search-expandable {
+      display: none;
+      position: absolute;
+      left: 54px;
+      top: 0;
+      background: rgba(15, 23, 42, 0.95);
+      border: 2px solid #0284c7;
+      border-radius: 10px;
+      padding: 4px;
+      gap: 6px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+      white-space: nowrap;
+    }
+
+    .search-expandable.open {
+      display: flex;
+    }
+
     .search-input {
       border: none;
       background: transparent;
@@ -69,7 +92,7 @@
       padding: 6px 8px;
       font-size: 14px;
       outline: none;
-      width: 170px;
+      width: 160px;
     }
     .search-input::placeholder {
       color: #94a3b8;
@@ -85,7 +108,7 @@
       cursor: pointer;
       -webkit-tap-highlight-color: transparent;
     }
-    
+
     /* PAINIKE-KONTROLLIT OIKEASSA YLÄKULMASSA */
     .map-controls-right {
       position: absolute;
@@ -125,6 +148,7 @@
       color: #ffffff !important;
       box-sizing: border-box !important;
     }
+    .btn-search { border-color: #0284c7 !important; color: #ffffff !important; }
     .btn-gps { border-color: #38bdf8 !important; color: #38bdf8 !important; }
     .btn-gps.gps-active { background: #0284c7 !important; border-color: #ffffff !important; color: #ffffff !important; }
     .btn-tee { border-color: #22c55e !important; }
@@ -222,10 +246,15 @@
 <body>
 
   <div id="map">
-    <!-- HAKUKENTTÄ VASEMMALLA -->
-    <div class="map-search-left" id="search-controls">
-      <input type="text" id="course-search-input" class="search-input" placeholder="Hae golfkenttää..." onkeydown="if(event.key==='Enter') searchGolfCourse()" />
-      <button class="search-btn" onclick="searchGolfCourse()">🔍 Hae</button>
+    <!-- HAKU- SIVUBUUTTONI VASEMMALLA -->
+    <div class="map-controls-left" id="search-controls">
+      <div class="search-wrapper">
+        <button id="btn-search-toggle" class="icon-btn btn-search" onclick="toggleSearchBox(event)" title="Hae kenttää">🔍</button>
+        <div class="search-expandable" id="search-box">
+          <input type="text" id="course-search-input" class="search-input" placeholder="Hae..." onkeydown="if(event.key==='Enter') searchGolfCourse()" />
+          <button class="search-btn" onclick="searchGolfCourse()">Hae</button>
+        </div>
+      </div>
     </div>
 
     <!-- PAINIKE-KONTROLLIT OIKEALLA -->
@@ -372,13 +401,24 @@
     let sectorBadgeGroup = L.layerGroup().addTo(map);
     let windMarkersGroup = L.layerGroup().addTo(map);
 
-    /* GOLFKENTÄN HAKUTOIMINTO */
+    /* HAKUKENTÄN AVAAMINEN/SULKEMINEN */
+    function toggleSearchBox(e) {
+      if (e) {
+        e.stopPropagation();
+        if (e.preventDefault) e.preventDefault();
+      }
+      const box = document.getElementById('search-box');
+      box.classList.toggle('open');
+      if (box.classList.contains('open')) {
+        document.getElementById('course-search-input').focus();
+      }
+    }
+
+    /* GOLFKENTÄN HAKUTOIMINTO (ILMAN AUTOMAATTISTA TEKSTILISÄYSTÄ) */
     async function searchGolfCourse() {
       const inputElem = document.getElementById('course-search-input');
-      const query = inputElem.value.trim();
-      if (!query) return;
-
-      const searchQuery = query.toLowerCase().includes("golf") ? query : `${query} golf`;
+      const searchQuery = inputElem.value.trim();
+      if (!searchQuery) return;
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
@@ -398,10 +438,12 @@
           teeMarker.setLatLng(teePosition);
           greenMarker.setLatLng(greenPosition);
 
+          document.getElementById('search-box').classList.remove('open');
+
           fetchWeatherData();
           updateCalculations();
         } else {
-          alert("Golfkenttää ei löytynyt. Kokeile hakea tarkemmalla nimellä.");
+          alert("Hakutuloksia ei löytynyt. Kokeile eri hakusanalla.");
         }
       } catch (err) {
         alert("Haku epäonnistui. Tarkista verkkoyhteys.");
@@ -455,7 +497,6 @@
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(teePosition, activeTarget);
           
-          // Lukitettaessa siirretään sektori heti kohdalla olevan suunnan mukaan
           const centerLat = map.getCenter();
           const currentBearing = getBearing(teePosition, [centerLat.lat, centerLat.lng]);
           targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, currentBearing);
@@ -576,7 +617,7 @@
           currentWindSpeed = Math.round(data.current.wind_speed_10m * 10) / 10;
           currentWindGusts = Math.round(data.current.wind_gusts_10m * 10) / 10;
           currentWindDirection = data.current.wind_direction_10m;
-          currentTempC = Math.round(data.current.temperature_2m); // Pyöristetään kokonaislukuun määrittelyn mukaisesti
+          currentTempC = Math.round(data.current.temperature_2m);
 
           renderWindOverlayIcons();
           updateCalculations();
