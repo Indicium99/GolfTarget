@@ -52,7 +52,7 @@
       z-index: 2000;
     }
 
-    /* TIIVIS YLÄBANNERI (IKONIT + STROKES GAINED) */
+    /* TIIVIS YLÄBANNERI (IKONIT + STROKES GAINED YLÄRIVILLÄ) */
     .top-header-banner {
       position: absolute;
       top: 10px;
@@ -69,7 +69,7 @@
       pointer-events: auto;
     }
     .top-banner-line1 {
-      font-size: 14px;
+      font-size: 13.5px;
       font-weight: bold;
       color: #ffffff;
     }
@@ -191,13 +191,13 @@
     }
     .active-mode { outline: 3px solid #ffffff; }
 
-    /* METRIKOIDEN TEKSTIT */
+    /* METRIKOIDEN TEKSTIT JA VALINTAPAINIKKEET */
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 5px;
       background: #1e293b;
-      padding: 6px 12px;
+      padding: 5px 10px;
       border-radius: 8px;
       border: 1px solid #334155;
     }
@@ -205,20 +205,39 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 16px;
+      font-size: 15px;
       font-weight: bold;
     }
     .metric-subline {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 14px;
+      font-size: 13.5px;
       color: #cbd5e1;
       border-top: 1px dashed #475569;
-      padding-top: 4px;
+      padding-top: 3px;
     }
-    .highlight-yellow { color: #facc15; font-size: 18px; font-weight: bold; }
+    .highlight-yellow { color: #facc15; font-size: 17px; font-weight: bold; }
     
+    /* KLIKATTAVAT PLAYS LIKE -TEKIJÄT */
+    .toggleable-factor {
+      cursor: pointer;
+      padding: 2px 6px;
+      border-radius: 6px;
+      border: 1px solid transparent;
+      transition: all 0.2s ease;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .toggleable-factor.active {
+      background: rgba(56, 189, 248, 0.2);
+      border-color: #38bdf8;
+    }
+    .toggleable-factor.inactive {
+      opacity: 0.45;
+      text-decoration: line-through;
+    }
+
     .elevation-up { color: #4ade80; font-weight: bold; }
     .elevation-down { color: #f87171; font-weight: bold; }
     .wind-tailwind { color: #4ade80; font-weight: bold; }
@@ -233,19 +252,6 @@
     .wind-arrow-svg {
       transition: transform 0.5s ease;
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
-    }
-
-    .sector-wind-badge {
-      background: rgba(15, 23, 42, 0.9);
-      border: 1.5px solid #facc15;
-      color: #ffffff;
-      font-size: 11px;
-      font-weight: bold;
-      padding: 2px 6px;
-      border-radius: 6px;
-      white-space: nowrap;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.7);
-      pointer-events: none;
     }
 
     .gps-user-marker {
@@ -264,13 +270,13 @@
 <body>
 
   <div id="map">
-    <!-- TIIVIS YLÄBANNERI VAIN IKONEILLA & STROKES GAINED (VÄYLÄ / RAFFI) -->
+    <!-- TIIVIS YLÄBANNERI VAIN IKONEILLA & STROKES GAINED YLÄRIVILLÄ -->
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
-        📍 <span id="dist-total" style="color:#38bdf8;">-</span> m <span style="color:#facc15; font-weight: bold; margin-left: 6px;">(v1.9.0)</span>
+        📍 <span id="dist-total" style="color:#38bdf8;">-</span> m &nbsp;|&nbsp; 📈 <span id="sg-val" style="color:#4ade80;">SG: -</span> <span style="color:#facc15; font-weight: bold; margin-left: 4px;">(v2.0.0)</span>
       </div>
       <div class="top-banner-line2">
-        🎯 <span id="top-dist-tee" style="color:#38bdf8;">-</span>m &nbsp;|&nbsp; ⛳ <span id="top-dist-green" style="color:#ffffff;">-</span>m &nbsp;|&nbsp; ↔️ <span id="sector-width" style="color:#cbd5e1;">-</span> &nbsp;|&nbsp; 📈 <span id="sg-val" style="color:#4ade80;">SG: -</span>
+        🎯 <span id="top-dist-tee" style="color:#38bdf8;">-</span>m &nbsp;|&nbsp; ⛳ <span id="top-dist-green" style="color:#ffffff;">-</span>m &nbsp;|&nbsp; ↔️ <span id="sector-width" style="color:#cbd5e1;">-</span>
       </div>
     </div>
 
@@ -299,12 +305,20 @@
     <div class="metrics-container">
       <div class="metric-line">
         <span class="highlight-yellow">Plays like <span id="plays-like-val">-</span> m</span>
-        <span id="temp-text">🌡️ -°C</span>
+        <!-- LÄMPÖTILA SIIRRETTY YLÄRIVILLE -->
+        <span id="temp-toggle" class="toggleable-factor active" onclick="toggleFactor('temp', event)">
+          <span id="temp-text">🌡️ -°C</span>
+        </span>
       </div>
 
       <div class="metric-subline">
-        <span id="wind-text">💨 Tuuli: -</span>
-        <span>Korkeusero: <span id="elevation-diff">-</span></span>
+        <span id="wind-toggle" class="toggleable-factor active" onclick="toggleFactor('wind', event)">
+          <span id="wind-text">💨 Tuuli: -</span>
+        </span>
+        <!-- KORKEUSERO SIIRRETTY ALARIVILLE -->
+        <span id="elevation-toggle" class="toggleable-factor active" onclick="toggleFactor('elevation', event)">
+          <span>Korkeus: <span id="elevation-diff">-</span></span>
+        </span>
       </div>
     </div>
   </div>
@@ -313,7 +327,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.9.0";
+    const APP_VERSION = "v2.0.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -328,7 +342,12 @@
     let elevationTimeout = null;
     let isInteractingWithUI = false;
 
-    // KAKDEN SORMINEN ELEIDEN SUOJAUS (PINCH / PAN)
+    // PLAYS LIKE -TEKIJÖIDEN VALINNAN TILA
+    let includeWind = true;
+    let includeElevation = true;
+    let includeTemp = true;
+
+    // ELEIDEN SUOJAUS (PINCH/PAN)
     let isMultiTouchActive = false;
     let multiTouchCooldownTimer = null;
 
@@ -420,10 +439,37 @@
     let outerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5}).addTo(map);
     let innerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5, dashArray: '5, 5'}).addTo(map);
     
+    /* VIHERIÖN DISPERSION/HAJONTAYMPYRÄ (5% MATKASTA) */
+    let greenDispersionCircle = L.circle(greenPosition, {
+      radius: 10,
+      color: '#facc15',
+      weight: 1.5,
+      dashArray: '4, 4',
+      fillColor: '#facc15',
+      fillOpacity: 0.08,
+      interactive: false
+    }).addTo(map);
+
     let arrowGroup = L.layerGroup().addTo(map);
     let distanceArcGroup = L.layerGroup().addTo(map);
     let windMarkersGroup = L.layerGroup().addTo(map);
     let sectorWindBadgeGroup = L.layerGroup().addTo(map);
+
+    /* PLAYS LIKE TEKIJÖIDEN KLIKKAUS / KYTKENTÄ */
+    function toggleFactor(type, e) {
+      triggerButtonGuard(e);
+      if (type === 'wind') {
+        includeWind = !includeWind;
+        document.getElementById('wind-toggle').className = `toggleable-factor ${includeWind ? 'active' : 'inactive'}`;
+      } else if (type === 'elevation') {
+        includeElevation = !includeElevation;
+        document.getElementById('elevation-toggle').className = `toggleable-factor ${includeElevation ? 'active' : 'inactive'}`;
+      } else if (type === 'temp') {
+        includeTemp = !includeTemp;
+        document.getElementById('temp-toggle').className = `toggleable-factor ${includeTemp ? 'active' : 'inactive'}`;
+      }
+      updateBottomPanelMetrics();
+    }
 
     function triggerButtonGuard(e) {
       if (e) {
@@ -450,7 +496,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/1.9.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/2.0.0' }
         });
         const results = await response.json();
 
@@ -676,20 +722,36 @@
       windMarkersGroup.addLayer(greenWindMarker);
     }
 
+    /* SIIRRETTY ENOKKÄÄMÄN SIVUUN SEKTORISTA SAMAAN TYYLIIN KUIN MUUT */
     function renderSectorWindBadge(targetPos, bearing) {
       sectorWindBadgeGroup.clearLayers();
       if (!targetPos) return;
 
-      const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 18, bearing + 90);
+      const dirTo = (currentWindDirection + 180) % 360;
 
-      const badgeIcon = L.divIcon({
+      // Siirretty kauemmas oikealle sektorista (50m suorassa kulmassa)
+      const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 50, bearing + 85);
+
+      const windSvgHtml = `
+        <div style="position: relative; width: 120px; height: 45px; display:flex; align-items:center; gap:6px; background: rgba(15, 23, 42, 0.85); padding: 3px 8px; border-radius: 8px; border: 1px solid #38bdf8; box-shadow: 0 4px 10px rgba(0,0,0,0.6);">
+          <svg class="wind-arrow-svg" width="30" height="30" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
+            <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
+            <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
+          </svg>
+          <div style="font-size: 12px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 3px #000; line-height: 1.1;">
+            💨 ${currentWindSpeed} m/s
+          </div>
+        </div>
+      `;
+
+      const windIcon = L.divIcon({
         className: 'clean-wind-arrow-wrapper',
-        html: `<div class="sector-wind-badge">💨 ${currentWindSpeed} m/s</div>`,
-        iconSize: [80, 24],
-        iconAnchor: [40, 12]
+        html: windSvgHtml,
+        iconSize: [120, 45],
+        iconAnchor: [20, 22]
       });
 
-      const badgeMarker = L.marker(badgePos, { icon: badgeIcon, interactive: false });
+      const badgeMarker = L.marker(badgePos, { icon: windIcon, interactive: false });
       sectorWindBadgeGroup.addLayer(badgeMarker);
     }
 
@@ -738,25 +800,27 @@
       updateBottomPanelMetrics();
     }
 
-    /* STROKES GAINED (SG) ODOTUSARVO: VÄYLÄ VS. RAFFI */
+    /* STROKES GAINED (SG): VÄYLÄ (RAFFI / BUNKKERI) */
     function calculateStrokesGained(distTeeMeters, distGreenMeters) {
-      if (!distTeeMeters || !distGreenMeters) return "0.0 (+0.0)";
+      if (!distTeeMeters || !distGreenMeters) return "0.0 (+0.0 / -0.2)";
       
       const yardsStart = distTeeMeters * 1.09361;
       const yardsRem = distGreenMeters * 1.09361;
 
-      // PGA Tour benchmark - kaavat odotetuille lyönneille
       const expStart = 0.82 + 0.0084 * yardsStart;
       const expRemFairway = 0.82 + 0.0084 * yardsRem;
-      const expRemRough = 1.15 + 0.0092 * yardsRem; // Raffin suurempi odotusarvo
+      const expRemRough = 1.15 + 0.0092 * yardsRem; 
+      const expRemSand = 1.45 + 0.0098 * yardsRem; // Bunkkerin odotusarvo
 
       const sgFairway = expStart - (expRemFairway + 1);
       const sgRough = expStart - (expRemRough + 1);
+      const sgSand = expStart - (expRemSand + 1);
 
       const fmtFW = sgFairway >= 0 ? `+${sgFairway.toFixed(1)}` : sgFairway.toFixed(1);
       const fmtRough = sgRough >= 0 ? `+${sgRough.toFixed(1)}` : sgRough.toFixed(1);
+      const fmtSand = sgSand >= 0 ? `+${sgSand.toFixed(1)}` : sgSand.toFixed(1);
 
-      return `${fmtFW} (${fmtRough})`;
+      return `${fmtFW} (${fmtRough} / ${fmtSand})`;
     }
 
     function updateBottomPanelMetrics() {
@@ -773,10 +837,11 @@
       const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
 
-      const windDistanceImpact = Math.round(-tailwindComponent * 0.95); 
+      // VALITUT PLAYS LIKE -TEKIJÄT
+      const windDistanceImpact = includeWind ? Math.round(-tailwindComponent * 0.95) : 0; 
       const tempDiff = currentTempC - 20;
-      const tempDistanceImpact = Math.round(-(tempDiff / 4) * (distTee / 200)); 
-      const elevationImpact = Math.round(currentElevationDiffMeters);
+      const tempDistanceImpact = includeTemp ? Math.round(-(tempDiff / 4) * (distTee / 200)) : 0; 
+      const elevationImpact = includeElevation ? Math.round(currentElevationDiffMeters) : 0;
 
       const playsLikeDistance = Math.round(distTee + windDistanceImpact + tempDistanceImpact + elevationImpact);
       const sgText = calculateStrokesGained(distTee, distGreen);
@@ -794,6 +859,7 @@
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
+      // PÄIVITETÄÄN YLÄBANNERI (SG YLÄRIVILLÄ)
       document.getElementById('top-dist-tee').innerText = distTee;
       document.getElementById('top-dist-green').innerText = targetPosition ? distGreen : 0;
       document.getElementById('sector-width').innerText = `${sectorWidthInner} / ${sectorWidthOuter}m`;
@@ -803,6 +869,12 @@
       document.getElementById('plays-like-val').innerText = playsLikeDistance;
       document.getElementById('wind-text').innerHTML = windText;
       document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (${tempImpactFormatted})`;
+
+      // PÄIVITETÄÄN VIHERIÖN DISPERSION YMPYRÄN SÄDE (5% MATKASTA VIHERIÖLLE)
+      const distFromTeeToGreen = calculateDistance(teePosition, greenPosition);
+      const dispersionRadiusMeters = Math.max(5, Math.round(distFromTeeToGreen * 0.05));
+      greenDispersionCircle.setRadius(dispersionRadiusMeters);
+      greenDispersionCircle.setLatLng(greenPosition);
     }
 
     function getArcSectorPoints(teePos, distTee, bearing, ratio) {
@@ -925,8 +997,7 @@
     });
 
     const mapElement = document.getElementById('map');
-    
-    /* MONISORMISEN KOSKETUKSEN (PINCH/PAN) SEURANTA */
+
     mapElement.addEventListener('touchstart', function(e) {
       if (e.touches.length > 1) {
         isMultiTouchActive = true;
@@ -939,7 +1010,7 @@
         clearTimeout(multiTouchCooldownTimer);
         multiTouchCooldownTimer = setTimeout(() => {
           isMultiTouchActive = false;
-        }, 500); // 500ms viive sormien irrotuksen jälkeen estää hypyn
+        }, 500);
       }
     }, { passive: false });
 
