@@ -362,7 +362,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.5.2</div>
+    <div class="vertical-version-tag">v6.6.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -435,11 +435,10 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.5.2";
+    const APP_VERSION = "v6.6.0";
     
-    // API-AVAIMET
-    const MML_API_KEY = "ee39819d-6c89-4482-929d-6ac518164967"; 
-    const GOOGLE_MAPS_API_KEY = ""; 
+    // GOOGLE MAPS API -AVAIN
+    const GOOGLE_MAPS_API_KEY = "AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs"; 
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
     let greenPosition = [24.680158, 60.258729]; 
@@ -455,7 +454,6 @@
     let currentElevationDiffMeters = 0;
     let elevationTimeout = null;
     let isInteractingWithUI = false;
-    let isMMLActive = false;
 
     let includeWind = true;
     let includeElevation = true;
@@ -516,13 +514,6 @@
     }
     window.addEventListener('resize', resizeCanvas);
     resizeCanvas();
-
-    function updateVersionTag() {
-      const versionTagElem = document.querySelector('.vertical-version-tag');
-      if (versionTagElem) {
-        versionTagElem.innerText = isMMLActive ? `${APP_VERSION} MML` : APP_VERSION;
-      }
-    }
 
     const controlsContainer = document.getElementById('map-controls');
     const leftControlsContainer = document.getElementById('left-controls');
@@ -944,7 +935,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.5.2' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.6.0' }
         });
         const results = await response.json();
 
@@ -1190,68 +1181,35 @@
       sectorWindMarker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(badgePos).addTo(map);
     }
 
-    /* KORKEUSHAKU: MML (SUOMI 2M CORS-proxylla) + GOOGLE / OPEN-METEO (ULKOMAAT) + CACHING */
+    /* KORKEUSHAKU: GOOGLE MAPS ELEVATION API (CACHING + FALLBACK OPEN-METEOON) */
     async function getSinglePointElevation(lng, lat) {
       const cacheKey = `elev_${lng.toFixed(5)}_${lat.toFixed(5)}`;
       const cached = localStorage.getItem(cacheKey);
       
       if (cached !== null) {
-        if (localStorage.getItem(`${cacheKey}_source`) === 'MML') {
-          isMMLActive = true;
-          updateVersionTag();
-        }
         return parseFloat(cached);
       }
 
-      // TARKISTETAAN OLLAANKO SUOMESSA (Lat ~59-71, Lng ~19-32)
-      const isFinland = (lat >= 59.0 && lat <= 71.0 && lng >= 19.0 && lng <= 32.0);
-
-      if (isFinland && MML_API_KEY && MML_API_KEY !== "LIITÄ_MAANMITTAUSLAITOKSEN_API_AVAIN_TÄHÄN") {
+      // GOOGLE MAPS ELEVATION API
+      if (GOOGLE_MAPS_API_KEY && GOOGLE_MAPS_API_KEY.trim() !== "") {
         try {
-          const rawMmlUrl = `https://avoin-paikkatieto.maanmittauslaitos.fi/elevation/v2/elevation/wgs84/${lat}/${lng}?api-key=${MML_API_KEY}`;
-          // Kierretään selaimen CORS-rajoitus corsproxy.io:n kautta
-          const url = `https://corsproxy.io/?${encodeURIComponent(rawMmlUrl)}`;
-
-          const res = await fetch(url);
-          if (res.ok) {
-            const data = await res.json();
-            if (data && data.elevation !== undefined) {
-              const elev = parseFloat(data.elevation);
-              localStorage.setItem(cacheKey, elev);
-              localStorage.setItem(`${cacheKey}_source`, 'MML');
-              
-              isMMLActive = true;
-              updateVersionTag();
-              return elev;
-            }
-          }
-        } catch (e) {
-          console.warn("MML-haku epäonnistui CORS/verkkovirheen takia, siirrytään varajärjestelmään.", e);
-          isMMLActive = false;
-          updateVersionTag();
-        }
-      }
-
-      // ULKOMAAT TAI VARALÄHTEET
-      isMMLActive = false;
-      updateVersionTag();
-
-      if (GOOGLE_MAPS_API_KEY) {
-        try {
-          const url = `https://maps.googleapis.com/maps/api/elevation/json?locations=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
-          const res = await fetch(url);
+          const googleUrl = `https://maps.googleapis.com/maps/api/elevation/json?locations=${lat},${lng}&key=${GOOGLE_MAPS_API_KEY}`;
+          const res = await fetch(googleUrl);
           const data = await res.json();
-          if (data.status === "OK" && data.results.length > 0) {
-            const elev = data.results[0].elevation;
+
+          if (data.status === "OK" && data.results && data.results.length > 0) {
+            const elev = parseFloat(data.results[0].elevation);
             localStorage.setItem(cacheKey, elev);
             return elev;
+          } else {
+            console.warn("Google API virhe/limiitti täynnä:", data.status, "- Siirrytään Open-Meteoon.");
           }
         } catch (e) {
-          console.warn("Google API virhe/limiitti täynnä.");
+          console.warn("Google Elevation API epäonnistui, siirrytään varajärjestelmään.", e);
         }
       }
 
-      // OLETUS/ILMAISLÄHDE: Open-Meteo
+      // VARAJÄRJESTELMÄ / OPEN-METEO
       try {
         const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
         const data = await res.json();
@@ -1261,7 +1219,7 @@
           return elev;
         }
       } catch (e) {
-        console.error("Korkeushaku epäonnistui täysin.");
+        console.error("Korkeushaku epäonnistui täysin.", e);
       }
 
       return 0;
