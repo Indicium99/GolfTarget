@@ -14,8 +14,8 @@
   <meta name="apple-mobile-web-app-title" content="Master Golf">
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/6b/Golf_icon.png">
 
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <!-- MapLibre GL CSS -->
+  <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
   <style>
     html, body {
@@ -40,16 +40,12 @@
     }
 
     #map {
-      height: 200%;
-      width: 200%;
+      height: 100%;
+      width: 100%;
       position: absolute;
-      top: -50%;
-      left: -50%;
-      cursor: crosshair;
+      top: 0;
+      left: 0;
       background-color: #0f172a;
-      touch-action: none;
-      transform-origin: 50% 50%;
-      will-change: transform;
     }
 
     #info-panel {
@@ -62,9 +58,10 @@
       justify-content: center;
       border-top: 2px solid #0284c7;
       z-index: 2000;
+      position: relative;
     }
 
-    .leaflet-control-attribution {
+    .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-attrib {
       display: none !important;
     }
 
@@ -303,37 +300,33 @@
     .sg-positive { color: #4ade80; font-weight: bold; }
     .sg-negative { color: #f87171; font-weight: bold; }
 
-    .clean-wind-arrow-wrapper {
-      background: transparent !important;
-      border: none !important;
-      box-shadow: none !important;
-      pointer-events: none;
-    }
-    .wind-arrow-svg {
-      transition: transform 0.5s ease;
-      filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
-    }
-
-    .arc-sg-text-only {
-      color: #ffffff !important;
-      font-size: 12px !important;
-      font-weight: bold !important;
+    .arc-sg-badge {
+      color: #ffffff;
+      font-size: 12px;
+      font-weight: bold;
       text-shadow: 0px 1px 3px #000000, 0px 0px 5px #000000;
       white-space: nowrap;
       pointer-events: none;
       user-select: none;
     }
 
+    .clean-wind-badge {
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .wind-arrow-svg {
+      transition: transform 0.3s ease;
+      filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
+    }
+
     .gps-user-marker {
+      width: 16px;
+      height: 16px;
       background: #38bdf8;
       border: 2px solid #ffffff;
       border-radius: 50%;
       box-shadow: 0 0 12px #38bdf8;
-    }
-
-    .custom-green-icon, .custom-tee-icon, .custom-target-icon {
-      background: transparent !important;
-      border: none !important;
     }
   </style>
 </head>
@@ -342,7 +335,7 @@
   <div id="map-wrapper">
     <div id="map"></div>
 
-    <div class="vertical-version-tag">v4.3.0</div>
+    <div class="vertical-version-tag">v5.0.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -411,25 +404,21 @@
     </div>
   </div>
 
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v4.3.0";
+    const APP_VERSION = "v5.0.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
-    let teePosition = [60.261447, 24.681644];   
-    let greenPosition = [60.258729, 24.680158]; 
+    let teePosition = [24.681644, 60.261447];   // MapLibre uses [lng, lat]
+    let greenPosition = [24.680158, 60.258729]; 
     let targetPosition = null;
     let lockedTargetDistance = 0;
     let userGPSPosition = null;
 
-    let mapRotationDeg = 0;
     let isRotationLocked = false;
     let compassState = 0; // 0 = Pohjoinen ylös, 1 = Väylä ylös (lukittu), 2 = Pohjoinen ylös (lukittu)
-    let initialTouchAngle = null;
-    let initialRotationDeg = 0;
-
-    let lastPanTouchCenter = null;
 
     let isTargetLocked = false;
     let currentMode = 'target'; 
@@ -441,9 +430,6 @@
     let includeElevation = true;
     let includeTemp = true;
 
-    let isMultiTouchActive = false;
-    let multiTouchCooldownTimer = null;
-
     let watchId = null;
     let userMarker = null;
 
@@ -452,128 +438,172 @@
     let currentWindGusts = 0;
     let currentTempC = 20;
 
-    let renderPending = false;
+    let teeMarker, greenMarker, targetMarker;
+    let teeWindMarker, greenWindMarker, sectorWindMarker;
+    let arcSgMarkers = [];
 
-    const map = L.map('map', {
-      maxZoom: 21,
-      zoomControl: false,
-      tap: false
-    }).setView([60.260088, 24.680901], 17);
-
-    map.dragging.disable();
+    // Alustetaan MapLibre GL satelliittikartoilla
+    const map = new maplibregl.Map({
+      container: 'map',
+      style: {
+        version: 8,
+        sources: {
+          'google-satellite': {
+            type: 'raster',
+            tiles: [
+              'https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
+              'https://mt1.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
+              'https://mt2.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}',
+              'https://mt3.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}'
+            ],
+            tileSize: 256,
+            maxzoom: 21
+          }
+        },
+        layers: [
+          {
+            id: 'google-satellite-layer',
+            type: 'raster',
+            source: 'google-satellite',
+            minzoom: 0,
+            maxzoom: 21
+          }
+        ]
+      },
+      center: [24.680901, 60.260088],
+      zoom: 16.5,
+      pitchWithRotate: false,
+      dragRotate: true,
+      touchZoomRotate: true
+    });
 
     const controlsContainer = document.getElementById('map-controls');
     const leftControlsContainer = document.getElementById('left-controls');
     const headerContainer = document.getElementById('top-header');
 
     [controlsContainer, leftControlsContainer, headerContainer].forEach(container => {
-      L.DomEvent.disableClickPropagation(container);
-      L.DomEvent.disableScrollPropagation(container);
-      
       ['click', 'dblclick', 'mousedown', 'mouseup', 'touchstart', 'touchend', 'touchmove', 'pointerdown', 'pointerup', 'pointermove'].forEach(evt => {
         container.addEventListener(evt, e => {
           isInteractingWithUI = true;
           e.stopPropagation();
-          if (e.stopImmediatePropagation) e.stopImmediatePropagation();
-          setTimeout(() => { isInteractingWithUI = false; }, 400);
+          setTimeout(() => { isInteractingWithUI = false; }, 300);
         }, { passive: false });
       });
     });
 
-    L.tileLayer('https://{s}.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
-      maxZoom: 21,
-      maxNativeZoom: 20,
-      subdomains: ['mt0', 'mt1', 'mt2', 'mt3'],
-      attribution: 'Map data &copy; Google'
-    }).addTo(map);
-
-    const golfTeeIcon = L.divIcon({
-      className: 'custom-tee-icon',
-      html: `<svg width="34" height="34" viewBox="0 0 32 32" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));">
-              <circle cx="16" cy="10" r="5.5" fill="#ffffff" stroke="#0f172a" stroke-width="0.8"/>
-              <path d="M11 16 L21 16 L17 28 L15 28 Z" fill="#22c55e" stroke="#ffffff" stroke-width="0.8"/>
-            </svg>`,
-      iconSize: [34, 34],
-      iconAnchor: [17, 28]
-    });
-
-    const golfGreenIcon = L.divIcon({
-      className: 'custom-green-icon',
-      html: `<svg width="32" height="36" viewBox="0 0 32 36" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
-              <line x1="8" y1="4" x2="8" y2="34" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
-              <path d="M8 4 L28 10 L8 16 Z" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
-              <circle cx="8" cy="3" r="1.8" fill="#facc15"/>
-            </svg>`,
-      iconSize: [32, 36],
-      iconAnchor: [8, 34]
-    });
-
-    const golfTargetIcon = L.divIcon({
-      className: 'custom-target-icon',
-      html: `<svg width="32" height="32" viewBox="0 0 32 32">
-              <circle cx="16" cy="16" r="14" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="3,2"/>
-              <line x1="16" y1="0" x2="16" y2="32" stroke="#ffffff" stroke-width="1.5"/>
-              <line x1="0" y1="16" x2="32" y2="16" stroke="#ffffff" stroke-width="1.5"/>
-              <circle cx="16" cy="16" r="4" fill="#ffffff" stroke="#0f172a" stroke-width="1"/>
-            </svg>`,
-      iconSize: [32, 32],
-      iconAnchor: [16, 16]
-    });
-
-    const userGpsIcon = L.divIcon({
-      className: 'gps-user-marker',
-      iconSize: [16, 16],
-      iconAnchor: [8, 8]
-    });
-
-    let teeMarker = L.marker(teePosition, {icon: golfTeeIcon, interactive: true}).addTo(map);
-    let greenMarker = L.marker(greenPosition, {icon: golfGreenIcon, interactive: true}).addTo(map);
-    let targetMarker = null;
-
-    let centerLine = L.polyline([], {color: '#ffffff', weight: 1.5}).addTo(map);
-    let lineToGreen = L.polyline([], {color: '#ef4444', weight: 1.5, dashArray: '4, 4'}).addTo(map);
-    let outerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5}).addTo(map);
-    let innerSectorPolyline = L.polyline([], {color: '#ffffff', weight: 1.5, dashArray: '5, 5'}).addTo(map);
-    
-    let greenDispersionCircle5 = L.circle(greenPosition, {
-      radius: 10,
-      color: '#facc15',
-      weight: 1.5,
-      dashArray: '4, 4',
-      fillColor: '#facc15',
-      fillOpacity: 0.1,
-      interactive: false
-    }).addTo(map);
-
-    let greenDispersionCircle7 = L.circle(greenPosition, {
-      radius: 14,
-      color: '#f87171',
-      weight: 1.2,
-      dashArray: '3, 3',
-      fillColor: '#f87171',
-      fillOpacity: 0.04,
-      interactive: false
-    }).addTo(map);
-
-    let arrowGroup = L.layerGroup().addTo(map);
-    let distanceArcGroup = L.layerGroup().addTo(map);
-    let windMarkersGroup = L.layerGroup().addTo(map);
-    let sectorWindBadgeGroup = L.layerGroup().addTo(map);
+    // Markkerielementtien luonti
+    function createCustomMarkerElement(type) {
+      const el = document.createElement('div');
+      if (type === 'tee') {
+        el.innerHTML = `<svg width="34" height="34" viewBox="0 0 32 32" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8)); cursor: pointer;">
+                          <circle cx="16" cy="10" r="5.5" fill="#ffffff" stroke="#0f172a" stroke-width="0.8"/>
+                          <path d="M11 16 L21 16 L17 28 L15 28 Z" fill="#22c55e" stroke="#ffffff" stroke-width="0.8"/>
+                        </svg>`;
+      } else if (type === 'green') {
+        el.innerHTML = `<svg width="32" height="36" viewBox="0 0 32 36" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9)); cursor: pointer;">
+                          <line x1="8" y1="4" x2="8" y2="34" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
+                          <path d="M8 4 L28 10 L8 16 Z" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
+                          <circle cx="8" cy="3" r="1.8" fill="#facc15"/>
+                        </svg>`;
+      } else if (type === 'target') {
+        el.innerHTML = `<svg width="32" height="32" viewBox="0 0 32 32">
+                          <circle cx="16" cy="16" r="14" fill="none" stroke="#ffffff" stroke-width="1.5" stroke-dasharray="3,2"/>
+                          <line x1="16" y1="0" x2="16" y2="32" stroke="#ffffff" stroke-width="1.5"/>
+                          <line x1="0" y1="16" x2="32" y2="16" stroke="#ffffff" stroke-width="1.5"/>
+                          <circle cx="16" cy="16" r="4" fill="#ffffff" stroke="#0f172a" stroke-width="1"/>
+                        </svg>`;
+      }
+      return el;
+    }
 
     const initialBearing = getBearing(teePosition, greenPosition);
     const initialTotalDist = calculateDistance(teePosition, greenPosition);
     const initialTargetDist = Math.min(250, Math.round(initialTotalDist * 0.75));
     targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
 
-    function setMapRotation(deg) {
-      mapRotationDeg = (deg + 360) % 360;
-      document.getElementById('map').style.transform = `rotate(${mapRotationDeg}deg)`;
-      
-      const needle = document.getElementById('compass-needle');
-      if (needle) {
-        needle.style.transform = `rotate(${-mapRotationDeg}deg)`;
-      }
-    }
+    map.on('load', () => {
+      // GeoJSON Lähteet
+      map.addSource('lines-source', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+
+      map.addSource('dispersion-source', {
+        type: 'geojson',
+        data: { type: 'FeatureCollection', features: [] }
+      });
+
+      // Taso: Päälyöntilinjat ja Sektorit
+      map.addLayer({
+        id: 'lines-layer',
+        type: 'line',
+        source: 'lines-source',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': ['get', 'width'],
+          'line-dasharray': ['case', ['has', 'dash'], ['get', 'dash'], ['literal', [1]]]
+        }
+      });
+
+      // Taso: Hajontaympyrät (Fill)
+      map.addLayer({
+        id: 'dispersion-fill-layer',
+        type: 'fill',
+        source: 'dispersion-source',
+        paint: {
+          'fill-color': ['get', 'fillColor'],
+          'fill-opacity': ['get', 'fillOpacity']
+        }
+      });
+
+      // Taso: Hajontaympyrät (Outline)
+      map.addLayer({
+        id: 'dispersion-line-layer',
+        type: 'line',
+        source: 'dispersion-source',
+        paint: {
+          'line-color': ['get', 'color'],
+          'line-width': 1.5
+        }
+      });
+
+      // Luodaan interaktiiviset Markkerit
+      teeMarker = new maplibregl.Marker({ element: createCustomMarkerElement('tee'), anchor: 'bottom-left', draggable: true })
+        .setLngLat(teePosition)
+        .addTo(map);
+
+      greenMarker = new maplibregl.Marker({ element: createCustomMarkerElement('green'), anchor: 'bottom-left', draggable: true })
+        .setLngLat(greenPosition)
+        .addTo(map);
+
+      targetMarker = new maplibregl.Marker({ element: createCustomMarkerElement('target'), anchor: 'center' })
+        .setLngLat(targetPosition)
+        .addTo(map);
+
+      teeMarker.on('drag', () => {
+        teePosition = [teeMarker.getLngLat().lng, teeMarker.getLngLat().lat];
+        updateCalculations();
+      });
+      teeMarker.on('dragend', () => fetchWeatherData());
+
+      greenMarker.on('drag', () => {
+        greenPosition = [greenMarker.getLngLat().lng, greenMarker.getLngLat().lat];
+        updateCalculations();
+      });
+      greenMarker.on('dragend', () => fetchWeatherData());
+
+      // Päivitetään kompassikuvakkeen osoitin kartan pyöriessä
+      map.on('rotate', () => {
+        const bearing = map.getBearing();
+        const needle = document.getElementById('compass-needle');
+        if (needle) {
+          needle.style.transform = `rotate(${-bearing}deg)`;
+        }
+      });
+
+      updateCalculations();
+      fetchWeatherData();
+    });
 
     function cycleCompassMode(e) {
       triggerButtonGuard(e);
@@ -581,106 +611,28 @@
       const badgeElem = document.getElementById('compass-lock-badge');
 
       if (compassState === 1) {
+        // VÄYLÄ YLÖS + LUKITUS
         const bearing = getBearing(teePosition, greenPosition);
-        const targetRotation = (360 - bearing) % 360;
-        setMapRotation(targetRotation);
+        map.rotateTo((360 - bearing) % 360, { duration: 400 });
+        map.dragRotate.disable();
+        map.touchZoomRotate.disableRotation();
         isRotationLocked = true;
         badgeElem.innerText = "🔒";
       } else if (compassState === 2) {
-        setMapRotation(0);
+        // POHJOINEN YLÖS + LUKITUS
+        map.rotateTo(0, { duration: 400 });
+        map.dragRotate.disable();
+        map.touchZoomRotate.disableRotation();
         isRotationLocked = true;
         badgeElem.innerText = "🔒";
       } else {
+        // VAPAA PYÖRITYS
+        map.dragRotate.enable();
+        map.touchZoomRotate.enableRotation();
         isRotationLocked = false;
         badgeElem.innerText = "";
       }
-      updateCalculations();
     }
-
-    function getScreenTouchToLatLng(touchOrEvent, offsetYPixels = 60) {
-      const wrapperElem = document.getElementById('map-wrapper');
-      const rect = wrapperElem.getBoundingClientRect();
-
-      const clientX = touchOrEvent.clientX !== undefined ? touchOrEvent.clientX : (touchOrEvent.touches && touchOrEvent.touches[0] ? touchOrEvent.touches[0].clientX : 0);
-      const clientY = touchOrEvent.clientY !== undefined ? touchOrEvent.clientY : (touchOrEvent.touches && touchOrEvent.touches[0] ? touchOrEvent.touches[0].clientY : 0);
-
-      const screenX = clientX - rect.left;
-      const screenY = clientY - rect.top;
-
-      const centerX = rect.width / 2;
-      const centerY = rect.height / 2;
-
-      const targetScreenX = screenX;
-      const targetScreenY = screenY - offsetYPixels;
-
-      const dx = targetScreenX - centerX;
-      const dy = targetScreenY - centerY;
-
-      const rad = (-mapRotationDeg * Math.PI) / 180;
-      const unrotatedDx = dx * Math.cos(rad) - dy * Math.sin(rad);
-      const unrotatedDy = dx * Math.sin(rad) + dy * Math.cos(rad);
-
-      const centerLatLng = map.getCenter();
-      const zoom = map.getZoom();
-      const centerPoint = map.project(centerLatLng, zoom);
-
-      const targetPoint = L.point(centerPoint.x + unrotatedDx, centerPoint.y + unrotatedDy);
-      return map.unproject(targetPoint, zoom);
-    }
-
-    function enableCustomOffsetDrag(marker, updatePosCallback) {
-      let isDragging = false;
-
-      const markerElement = marker.getElement();
-      if (!markerElement) return;
-
-      markerElement.style.pointerEvents = 'auto';
-
-      function onTouchStart(e) {
-        if (e.touches && e.touches.length > 1) return;
-        isDragging = true;
-        isInteractingWithUI = true;
-        e.stopPropagation();
-      }
-
-      function onTouchMove(e) {
-        if (!isDragging || isMultiTouchActive || !e.touches || e.touches.length > 1) return;
-        e.preventDefault();
-        e.stopPropagation();
-
-        const touch = e.touches[0];
-        const newLatLng = getScreenTouchToLatLng(touch, 60);
-
-        marker.setLatLng(newLatLng);
-        updatePosCallback([newLatLng.lat, newLatLng.lng]);
-      }
-
-      function onTouchEnd(e) {
-        if (isDragging) {
-          isDragging = false;
-          setTimeout(() => { isInteractingWithUI = false; }, 300);
-          fetchWeatherData();
-        }
-      }
-
-      markerElement.addEventListener('touchstart', onTouchStart, { passive: false });
-      window.addEventListener('touchmove', onTouchMove, { passive: false });
-      window.addEventListener('touchend', onTouchEnd, { passive: false });
-    }
-
-    setTimeout(() => {
-      enableCustomOffsetDrag(teeMarker, function(pos) {
-        teePosition = pos;
-        renderWindOverlayIcons();
-        updateCalculations();
-      });
-
-      enableCustomOffsetDrag(greenMarker, function(pos) {
-        greenPosition = pos;
-        renderWindOverlayIcons();
-        updateCalculations();
-      });
-    }, 500);
 
     function zoomInMap(e) {
       triggerButtonGuard(e);
@@ -711,10 +663,9 @@
       if (e) {
         if (e.stopPropagation) e.stopPropagation();
         if (e.preventDefault) e.preventDefault();
-        if (e.stopImmediatePropagation) e.stopImmediatePropagation();
       }
       isInteractingWithUI = true;
-      setTimeout(() => { isInteractingWithUI = false; }, 400);
+      setTimeout(() => { isInteractingWithUI = false; }, 300);
     }
 
     function toggleSearchBox(e) {
@@ -733,7 +684,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/4.3.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/5.0.0' }
         });
         const results = await response.json();
 
@@ -741,15 +692,15 @@
           const lat = parseFloat(results[0].lat);
           const lon = parseFloat(results[0].lon);
 
-          map.setView([lat, lon], 17);
-          teePosition = [lat, lon];
-          greenPosition = getDestinationPoint(lat, lon, 350, 0);
+          map.flyTo({ center: [lon, lat], zoom: 16.5 });
+          teePosition = [lon, lat];
+          greenPosition = getDestinationPoint(lon, lat, 350, 0);
           
           const bearing = getBearing(teePosition, greenPosition);
-          targetPosition = getDestinationPoint(lat, lon, 240, bearing);
+          targetPosition = getDestinationPoint(lon, lat, 240, bearing);
 
-          teeMarker.setLatLng(teePosition);
-          greenMarker.setLatLng(greenPosition);
+          teeMarker.setLngLat(teePosition);
+          greenMarker.setLngLat(greenPosition);
 
           document.getElementById('search-box').classList.remove('open');
 
@@ -788,7 +739,6 @@
       triggerButtonGuard(e);
       currentMode = mode;
       isTargetLocked = false;
-      map.dragging.enable();
       updateModeButtonsUI();
     }
 
@@ -798,16 +748,12 @@
       if (currentMode !== 'target') {
         currentMode = 'target';
         isTargetLocked = false;
-        map.dragging.disable();
       } else {
         isTargetLocked = !isTargetLocked;
 
         if (isTargetLocked) {
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(teePosition, activeTarget);
-          map.dragging.disable();
-        } else {
-          map.dragging.disable();
         }
       }
 
@@ -823,7 +769,7 @@
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
         watchId = null;
-        if (userMarker) map.removeLayer(userMarker);
+        if (userMarker) userMarker.remove();
         userMarker = null;
         gpsBtn.classList.remove('gps-active');
         setTeeBtn.style.display = "none";
@@ -837,13 +783,15 @@
           function(position) {
             const lat = position.coords.latitude;
             const lng = position.coords.longitude;
-            userGPSPosition = [lat, lng];
+            userGPSPosition = [lng, lat];
 
             if (!userMarker) {
-              userMarker = L.marker(userGPSPosition, {icon: userGpsIcon}).addTo(map);
-              map.setView(userGPSPosition, 18);
+              const el = document.createElement('div');
+              el.className = 'gps-user-marker';
+              userMarker = new maplibregl.Marker({ element: el }).setLngLat(userGPSPosition).addTo(map);
+              map.flyTo({ center: userGPSPosition, zoom: 17.5 });
             } else {
-              userMarker.setLatLng(userGPSPosition);
+              userMarker.setLngLat(userGPSPosition);
             }
 
             gpsBtn.classList.add('gps-active');
@@ -863,19 +811,20 @@
       triggerButtonGuard(e);
       if (userGPSPosition) {
         teePosition = userGPSPosition;
-        teeMarker.setLatLng(teePosition);
+        teeMarker.setLngLat(teePosition);
         fetchWeatherData();
         updateCalculations();
       }
     }
 
+    // Geometria- ja Etäisyyslaskenta
     function calculateDistance(pos1, pos2) {
       if (!pos1 || !pos2) return 0;
       const R = 6371e3;
-      const phi1 = pos1[0] * Math.PI / 180;
-      const phi2 = pos2[0] * Math.PI / 180;
-      const deltaPhi = (pos2[0] - pos1[0]) * Math.PI / 180;
-      const deltaLambda = (pos2[1] - pos1[1]) * Math.PI / 180;
+      const phi1 = pos1[1] * Math.PI / 180;
+      const phi2 = pos2[1] * Math.PI / 180;
+      const deltaPhi = (pos2[1] - pos1[1]) * Math.PI / 180;
+      const deltaLambda = (pos2[0] - pos1[0]) * Math.PI / 180;
 
       const a = Math.sin(deltaPhi / 2) * Math.sin(deltaPhi / 2) +
                 Math.cos(phi1) * Math.cos(phi2) *
@@ -884,24 +833,24 @@
       return Math.round(R * c);
     }
 
-    function getDestinationPoint(lat, lon, distance, bearing) {
+    function getDestinationPoint(lng, lat, distance, bearing) {
       const R = 6371e3;
       const brng = bearing * Math.PI / 180;
       const lat1 = lat * Math.PI / 180;
-      const lon1 = lon * Math.PI / 180;
+      const lon1 = lng * Math.PI / 180;
 
       const lat2 = Math.asin(Math.sin(lat1) * Math.cos(distance / R) +
                    Math.cos(lat1) * Math.sin(distance / R) * Math.cos(brng));
       const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distance / R) * Math.cos(lat1),
                                      Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2));
 
-      return [lat2 * 180 / Math.PI, lon2 * 180 / Math.PI];
+      return [lon2 * 180 / Math.PI, lat2 * 180 / Math.PI]; // MapLibre format [lng, lat]
     }
 
     function getBearing(pos1, pos2) {
-      const lat1 = pos1[0] * Math.PI / 180;
-      const lat2 = pos2[0] * Math.PI / 180;
-      const dLon = (pos2[1] - pos1[1]) * Math.PI / 180;
+      const lat1 = pos1[1] * Math.PI / 180;
+      const lat2 = pos2[1] * Math.PI / 180;
+      const dLon = (pos2[0] - pos1[0]) * Math.PI / 180;
 
       const y = Math.sin(dLon) * Math.cos(lat2);
       const x = Math.cos(lat1) * Math.sin(lat2) - Math.sin(lat1) * Math.cos(lat2) * Math.cos(dLon);
@@ -910,7 +859,7 @@
 
     async function fetchWeatherData() {
       try {
-        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${teePosition[0]}&longitude=${teePosition[1]}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms`);
+        const response = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${teePosition[1]}&longitude=${teePosition[0]}&current=temperature_2m,wind_speed_10m,wind_direction_10m,wind_gusts_10m&wind_speed_unit=ms`);
         const data = await response.json();
 
         if (data && data.current) {
@@ -928,49 +877,46 @@
     }
 
     function renderWindOverlayIcons() {
-      windMarkersGroup.clearLayers();
+      if (teeWindMarker) teeWindMarker.remove();
+      if (greenWindMarker) greenWindMarker.remove();
 
       const dirTo = (currentWindDirection + 180) % 360;
 
-      const windSvgHtml = `
-        <div style="position: relative; width: 130px; height: 50px; display:flex; align-items:center; gap:8px;">
-          <svg class="wind-arrow-svg" width="38" height="38" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
-            <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
-            <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
-          </svg>
-          <div style="font-size: 13px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.2;">
-            💨 ${Math.round(currentWindSpeed)} m/s<br>
-            <span style="color:#facc15; font-size:11px;">(${Math.round(currentWindGusts)} m/s)</span>
+      const createWindElem = () => {
+        const el = document.createElement('div');
+        el.className = 'clean-wind-badge';
+        el.innerHTML = `
+          <div style="position: relative; width: 130px; height: 50px; display:flex; align-items:center; gap:8px;">
+            <svg class="wind-arrow-svg" width="38" height="38" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
+              <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
+              <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
+            </svg>
+            <div style="font-size: 13px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.2;">
+              💨 ${Math.round(currentWindSpeed)} m/s<br>
+              <span style="color:#facc15; font-size:11px;">(${Math.round(currentWindGusts)} m/s)</span>
+            </div>
           </div>
-        </div>
-      `;
-
-      const windIcon = L.divIcon({
-        className: 'clean-wind-arrow-wrapper',
-        html: windSvgHtml,
-        iconSize: [130, 50],
-        iconAnchor: [19, 25]
-      });
+        `;
+        return el;
+      };
 
       const teeWindPos = getDestinationPoint(teePosition[0], teePosition[1], 45, 270);
       const greenWindPos = getDestinationPoint(greenPosition[0], greenPosition[1], 45, 90);
 
-      const teeWindMarker = L.marker(teeWindPos, { icon: windIcon, interactive: false });
-      const greenWindMarker = L.marker(greenWindPos, { icon: windIcon, interactive: false });
-
-      windMarkersGroup.addLayer(teeWindMarker);
-      windMarkersGroup.addLayer(greenWindMarker);
+      teeWindMarker = new maplibregl.Marker({ element: createWindElem(), anchor: 'center' }).setLngLat(teeWindPos).addTo(map);
+      greenWindMarker = new maplibregl.Marker({ element: createWindElem(), anchor: 'center' }).setLngLat(greenWindPos).addTo(map);
     }
 
     function renderSectorWindBadge(targetPos, bearing) {
-      sectorWindBadgeGroup.clearLayers();
+      if (sectorWindMarker) sectorWindMarker.remove();
       if (!targetPos) return;
 
       const dirTo = (currentWindDirection + 180) % 360;
-
       const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 45, bearing + 85);
 
-      const windSvgHtml = `
+      const el = document.createElement('div');
+      el.className = 'clean-wind-badge';
+      el.innerHTML = `
         <div style="position: relative; width: 40px; height: 40px; display:flex; align-items:center; justify-content:center;">
           <svg class="wind-arrow-svg" width="36" height="36" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
@@ -979,15 +925,7 @@
         </div>
       `;
 
-      const windIcon = L.divIcon({
-        className: 'clean-wind-arrow-wrapper',
-        html: windSvgHtml,
-        iconSize: [40, 40],
-        iconAnchor: [20, 20]
-      });
-
-      const badgeMarker = L.marker(badgePos, { icon: windIcon, interactive: false });
-      sectorWindBadgeGroup.addLayer(badgeMarker);
+      sectorWindMarker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(badgePos).addTo(map);
     }
 
     function fetchElevationDifferenceDebounced(teePos, targetPos) {
@@ -995,7 +933,7 @@
       elevationTimeout = setTimeout(async () => {
         try {
           if (GOOGLE_MAPS_API_KEY) {
-            const url = `https://maps.googleapis.com/maps/api/elevation/json?locations=${teePos[0]},${teePos[1]}|${targetPos[0]},${targetPos[1]}&key=${GOOGLE_MAPS_API_KEY}`;
+            const url = `https://maps.googleapis.com/maps/api/elevation/json?locations=${teePos[1]},${teePos[0]}|${targetPos[1]},${targetPos[0]}&key=${GOOGLE_MAPS_API_KEY}`;
             const response = await fetch(url);
             const data = await response.json();
 
@@ -1008,7 +946,7 @@
             }
           }
 
-          const response = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${teePos[0]},${targetPos[0]}&longitude=${teePos[1]},${targetPos[1]}`);
+          const response = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${teePos[1]},${targetPos[1]}&longitude=${teePos[0]},${targetPos[0]}`);
           const data = await response.json();
 
           if (data && data.elevation && data.elevation.length === 2) {
@@ -1146,22 +1084,25 @@
       }
 
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
+      document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
+    }
 
-      const distanceForDispersion = isPar3 ? totalDistToGreen : (targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDistToGreen);
-      
-      greenDispersionCircle5.setRadius(distanceForDispersion * 0.05);
-      greenDispersionCircle5.setLatLng(greenPosition);
-
-      greenDispersionCircle7.setRadius(distanceForDispersion * 0.07);
-      greenDispersionCircle7.setLatLng(greenPosition);
+    function createCircleGeoJSON(center, radiusMeters) {
+      const points = 64;
+      const coords = [];
+      for (let i = 0; i < points; i++) {
+        const bearing = (i * 360) / points;
+        coords.push(getDestinationPoint(center[0], center[1], radiusMeters, bearing));
+      }
+      coords.push(coords[0]);
+      return coords;
     }
 
     function getArcSectorPoints(teePos, distTee, bearing, ratio) {
       const deltaAngle = Math.atan(ratio / 2) * (180 / Math.PI); 
       const points = [teePos];
       
-      const steps = 6; 
+      const steps = 12; 
       for (let i = 0; i <= steps; i++) {
         const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
         points.push(getDestinationPoint(teePos[0], teePos[1], distTee, currentAngle));
@@ -1170,250 +1111,184 @@
       return points;
     }
 
-    function drawCenterArrowExtension(startPos, bearing, extensionLength = 50) {
-      arrowGroup.clearLayers();
-      const endPos = getDestinationPoint(startPos[0], startPos[1], extensionLength, bearing);
-      
-      const shaft = L.polyline([startPos, endPos], {color: '#ffffff', weight: 1.5});
-      arrowGroup.addLayer(shaft);
+    function updateCalculations() {
+      if (!map.getSource('lines-source')) return;
 
-      const headLength = 10;
-      const leftTip = getDestinationPoint(endPos[0], endPos[1], headLength, bearing + 155);
-      const rightTip = getDestinationPoint(endPos[0], endPos[1], headLength, bearing - 155);
+      const lineFeatures = [];
+      const dispersionFeatures = [];
 
-      const head = L.polyline([leftTip, endPos, rightTip], {color: '#ffffff', weight: 1.5});
-      arrowGroup.addLayer(head);
-    }
+      arcSgMarkers.forEach(m => m.remove());
+      arcSgMarkers = [];
 
-    function drawDistanceArcsByBearing(teePos, distTee, bearing, maxRatio) {
-      distanceArcGroup.clearLayers();
-      if (distTee < 140) return;
+      const totalDist = calculateDistance(teePosition, greenPosition);
+      document.getElementById('dist-total').innerText = totalDist;
 
-      const deltaAngle = Math.atan(maxRatio / 2) * (180 / Math.PI);
+      const isPar3 = totalDist < 200;
 
-      for (let d = 140; d <= distTee; d += 20) {
-        const arcPoints = [];
-        const steps = 6;
-        for (let i = 0; i <= steps; i++) {
-          const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
-          arcPoints.push(getDestinationPoint(teePos[0], teePos[1], d, currentAngle));
-        }
+      if (isPar3) {
+        if (targetMarker) targetMarker.remove();
 
-        const arcLine = L.polyline(arcPoints, {color: '#ffffff', weight: 1, opacity: 0.5});
-        distanceArcGroup.addLayer(arcLine);
-
-        const centerPointOnArc = getDestinationPoint(teePos[0], teePos[1], d, bearing);
-        const remToGreen = calculateDistance(centerPointOnArc, greenPosition);
-        const sgVal = calculateSGValue(d, remToGreen);
-        const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
-
-        const badgeIcon = L.divIcon({
-          className: 'clean-wind-arrow-wrapper',
-          html: `<div class="arc-sg-text-only">${sgText}</div>`,
-          iconSize: [40, 16],
-          iconAnchor: [20, 8]
+        lineFeatures.push({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [teePosition, greenPosition] },
+          properties: { color: '#ffffff', width: 1.5 }
         });
 
-        const badgeMarker = L.marker(centerPointOnArc, { icon: badgeIcon, interactive: false });
-        distanceArcGroup.addLayer(badgeMarker);
-      }
-    }
-
-    function updateCalculations() {
-      if (renderPending) return;
-      renderPending = true;
-
-      requestAnimationFrame(() => {
-        renderPending = false;
-
-        const totalDist = calculateDistance(teePosition, greenPosition);
-        document.getElementById('dist-total').innerText = totalDist;
-
-        const isPar3 = totalDist < 200;
-
-        if (isPar3) {
-          if (targetMarker) {
-            map.removeLayer(targetMarker);
-            targetMarker = null;
-          }
-          centerLine.setLatLngs([teePosition, greenPosition]);
-          outerSectorPolyline.setLatLngs([]);
-          innerSectorPolyline.setLatLngs([]);
-          distanceArcGroup.clearLayers();
-          arrowGroup.clearLayers();
-          lineToGreen.setLatLngs([]);
-          sectorWindBadgeGroup.clearLayers();
-
-          updateBottomPanelMetrics();
-          fetchElevationDifferenceDebounced(teePosition, greenPosition);
-        } else {
-          const currentTargetOrGreen = targetPosition || greenPosition;
-          centerLine.setLatLngs([teePosition, currentTargetOrGreen]);
-
-          const distTee = calculateDistance(teePosition, targetPosition || greenPosition);
-
-          if (!targetMarker && targetPosition) {
-            targetMarker = L.marker(targetPosition, {icon: golfTargetIcon}).addTo(map);
-          } else if (targetMarker && targetPosition) {
-            targetMarker.setLatLng(targetPosition);
-          }
-
-          updateBottomPanelMetrics();
-          const activeTargetPos = targetPosition || greenPosition;
-          fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
-
-          const bearing = getBearing(teePosition, activeTargetPos);
-
-          outerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, distTee, bearing, 0.2222));
-          innerSectorPolyline.setLatLngs(getArcSectorPoints(teePosition, distTee, bearing, 0.1481));
-
-          drawDistanceArcsByBearing(teePosition, distTee, bearing, 0.2222);
-          drawCenterArrowExtension(activeTargetPos, bearing, 50);
-          renderSectorWindBadge(activeTargetPos, bearing);
-
-          if (targetPosition) {
-            lineToGreen.setLatLngs([targetPosition, greenPosition]);
-          } else {
-            lineToGreen.setLatLngs([]);
-          }
-        }
-      });
-    }
-
-    function handlePointerMoveWithOffset(e) {
-      if (isInteractingWithUI || isMultiTouchActive) return;
-
-      if (currentMode === 'target') {
-        const touch = e.touches ? e.touches[0] : e;
-        const latlng = getScreenTouchToLatLng(touch, 60);
-
-        if (!isTargetLocked) {
-          targetPosition = [latlng.lat, latlng.lng];
-        } else {
-          const newBearing = getBearing(teePosition, [latlng.lat, latlng.lng]);
-          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
-        }
-        updateCalculations();
-      }
-    }
-
-    map.on('mousemove', function(e) {
-      if (currentMode === 'target') handlePointerMoveWithOffset(e.originalEvent);
-    });
-
-    const wrapperElement = document.getElementById('map-wrapper');
-
-    function getTouchAngle(touch1, touch2) {
-      const dx = touch2.clientX - touch1.clientX;
-      const dy = touch2.clientY - touch1.clientY;
-      return (Math.atan2(dy, dx) * 180) / Math.PI;
-    }
-
-    function getTouchCenter(touch1, touch2) {
-      return {
-        x: (touch1.clientX + touch2.clientX) / 2,
-        y: (touch1.clientY + touch2.clientY) / 2
-      };
-    }
-
-    wrapperElement.addEventListener('touchstart', function(e) {
-      if (e.touches.length >= 2) {
-        isMultiTouchActive = true;
-        clearTimeout(multiTouchCooldownTimer);
+        if (sectorWindMarker) sectorWindMarker.remove();
+      } else {
+        const currentTargetOrGreen = targetPosition || greenPosition;
         
-        if (!isRotationLocked) {
-          initialTouchAngle = getTouchAngle(e.touches[0], e.touches[1]);
-          initialRotationDeg = mapRotationDeg;
-        }
-        lastPanTouchCenter = getTouchCenter(e.touches[0], e.touches[1]);
-      }
-    }, { passive: false });
+        if (!targetMarker._map) targetMarker.addTo(map);
+        targetMarker.setLngLat(currentTargetOrGreen);
 
-    wrapperElement.addEventListener('touchend', function(e) {
-      if (e.touches.length < 2) {
-        initialTouchAngle = null;
-        lastPanTouchCenter = null;
-        clearTimeout(multiTouchCooldownTimer);
-        
-        if (e.touches.length === 0) {
-          multiTouchCooldownTimer = setTimeout(() => {
-            isMultiTouchActive = false;
-            updateCalculations(); // Paivitettaan sektoripisteet heti pyorityksen paatyttya
-          }, 200);
-        }
-      }
-    }, { passive: false });
+        const distTee = calculateDistance(teePosition, currentTargetOrGreen);
+        const activeTargetPos = currentTargetOrGreen;
+        const bearing = getBearing(teePosition, activeTargetPos);
 
-    /* KAHDEN SORMEN SIIRTO JA ROTAATIO (VAKAUTETTU JA SUUNNATTU KORJATTU) */
-    wrapperElement.addEventListener('touchmove', function(e) {
+        // Keskijooni
+        lineFeatures.push({
+          type: 'Feature',
+          geometry: { type: 'LineString', coordinates: [teePosition, activeTargetPos] },
+          properties: { color: '#ffffff', width: 1.5 }
+        });
+
+        // Nuolen kärki
+        const arrowEnd = getDestinationPoint(activeTargetPos[0], activeTargetPos[1], 50, bearing);
+        const leftTip = getDestinationPoint(arrowEnd[0], arrowEnd[1], 10, bearing + 155);
+        const rightTip = getDestinationPoint(arrowEnd[0], arrowEnd[1], 10, bearing - 155);
+
+        lineFeatures.push(
+          {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: [activeTargetPos, arrowEnd] },
+            properties: { color: '#ffffff', width: 1.5 }
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: [leftTip, arrowEnd, rightTip] },
+            properties: { color: '#ffffff', width: 1.5 }
+          }
+        );
+
+        // Ulko- ja Sisesektori
+        lineFeatures.push(
+          {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: getArcSectorPoints(teePosition, distTee, bearing, 0.2222) },
+            properties: { color: '#ffffff', width: 1.5 }
+          },
+          {
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: getArcSectorPoints(teePosition, distTee, bearing, 0.1481) },
+            properties: { color: '#ffffff', width: 1.5, dash: [4, 4] }
+          }
+        );
+
+        // Viiva Kohteelta Lipulle
+        if (targetPosition) {
+          lineFeatures.push({
+            type: 'Feature',
+            geometry: { type: 'LineString', coordinates: [targetPosition, greenPosition] },
+            properties: { color: '#ef4444', width: 1.5, dash: [3, 3] }
+          });
+        }
+
+        // Kaariviivat ja SG-merkit (ALKAEN 140 METRISTÄ)
+        if (distTee >= 140) {
+          const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
+
+          for (let d = 140; d <= distTee; d += 20) {
+            const arcPoints = [];
+            const steps = 10;
+            for (let i = 0; i <= steps; i++) {
+              const currentAngle = (bearing - deltaAngle) + ((2 * deltaAngle) * (i / steps));
+              arcPoints.push(getDestinationPoint(teePosition[0], teePosition[1], d, currentAngle));
+            }
+
+            lineFeatures.push({
+              type: 'Feature',
+              geometry: { type: 'LineString', coordinates: arcPoints },
+              properties: { color: '#ffffff', width: 1 }
+            });
+
+            const centerPointOnArc = getDestinationPoint(teePosition[0], teePosition[1], d, bearing);
+            const remToGreen = calculateDistance(centerPointOnArc, greenPosition);
+            const sgVal = calculateSGValue(d, remToGreen);
+            const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
+
+            const el = document.createElement('div');
+            el.className = 'arc-sg-badge';
+            el.innerText = sgText;
+
+            const m = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(centerPointOnArc).addTo(map);
+            arcSgMarkers.push(m);
+          }
+        }
+
+        renderSectorWindBadge(activeTargetPos, bearing);
+      }
+
+      // Hajontaympyrät viheriölle (5% / 7%)
+      const distanceForDispersion = isPar3 ? totalDist : (targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDist);
+
+      dispersionFeatures.push(
+        {
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: [createCircleGeoJSON(greenPosition, distanceForDispersion * 0.05)] },
+          properties: { color: '#facc15', fillColor: '#facc15', fillOpacity: 0.1 }
+        },
+        {
+          type: 'Feature',
+          geometry: { type: 'Polygon', coordinates: [createCircleGeoJSON(greenPosition, distanceForDispersion * 0.07)] },
+          properties: { color: '#f87171', fillColor: '#f87171', fillOpacity: 0.04 }
+        }
+      );
+
+      map.getSource('lines-source').setData({ type: 'FeatureCollection', features: lineFeatures });
+      map.getSource('dispersion-source').setData({ type: 'FeatureCollection', features: dispersionFeatures });
+
+      updateBottomPanelMetrics();
+      const activeTargetPos = isPar3 ? greenPosition : (targetPosition || greenPosition);
+      fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
+    }
+
+    // Kosketuksen/Klikkauksen kuuntelu
+    map.on('click', (e) => {
       if (isInteractingWithUI) return;
 
-      if (e.touches.length === 2) {
-        e.preventDefault();
-
-        // 1. Pyöritys kahdella sormella
-        if (initialTouchAngle !== null && !isRotationLocked) {
-          const currentAngle = getTouchAngle(e.touches[0], e.touches[1]);
-          
-          let angleDiff = currentAngle - initialTouchAngle;
-          if (angleDiff > 180) angleDiff -= 360;
-          if (angleDiff < -180) angleDiff += 360;
-
-          const newRotation = initialRotationDeg + (angleDiff * 0.85);
-          setMapRotation(newRotation);
-        }
-
-        // 2. Panorointi / Siirto kahdella sormella (Aukoton suuntaus korjattu)
-        const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
-        if (lastPanTouchCenter) {
-          const dx = currentCenter.x - lastPanTouchCenter.x;
-          const dy = currentCenter.y - lastPanTouchCenter.y;
-
-          // Trigonometrisesti korjattu sormien liikkeen kääntö
-          const rad = (mapRotationDeg * Math.PI) / 180;
-          const rotatedDx = dx * Math.cos(rad) - dy * Math.sin(rad);
-          const rotatedDy = dx * Math.sin(rad) + dy * Math.cos(rad);
-
-          map.panBy([-rotatedDx, -rotatedDy], { animate: false });
-        }
-        lastPanTouchCenter = currentCenter;
-        return;
-      }
-
-      if (currentMode === 'target' && e.touches.length === 1 && !isMultiTouchActive) {
-        e.preventDefault();
-        handlePointerMoveWithOffset(e);
-      }
-    }, { passive: false });
-
-    map.on('click', function(e) {
-      if (isInteractingWithUI || isMultiTouchActive) return;
-
-      const originalEvent = e.originalEvent;
-      if (originalEvent && (controlsContainer.contains(originalEvent.target) || leftControlsContainer.contains(originalEvent.target) || headerContainer.contains(originalEvent.target))) {
-        return;
-      }
-
-      const latlng = getScreenTouchToLatLng(originalEvent, 0);
-      const coords = [latlng.lat, latlng.lng];
+      const coords = [e.lngLat.lng, e.lngLat.lat];
 
       if (currentMode === 'tee') {
         teePosition = coords;
-        teeMarker.setLatLng(coords);
+        teeMarker.setLngLat(coords);
         fetchWeatherData();
       } else if (currentMode === 'green') {
         greenPosition = coords;
-        greenMarker.setLatLng(coords);
+        greenMarker.setLngLat(coords);
         renderWindOverlayIcons();
       } else if (currentMode === 'target' && !isTargetLocked) {
-        handlePointerMoveWithOffset(e.originalEvent);
+        targetPosition = coords;
       }
       updateCalculations();
     });
 
+    map.on('mousemove', (e) => {
+      if (isInteractingWithUI) return;
+
+      if (currentMode === 'target') {
+        const coords = [e.lngLat.lng, e.lngLat.lat];
+
+        if (!isTargetLocked) {
+          targetPosition = coords;
+        } else {
+          const newBearing = getBearing(teePosition, coords);
+          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
+        }
+        updateCalculations();
+      }
+    });
+
     updateModeButtonsUI();
-    updateCalculations();
-    fetchWeatherData();
   </script>
 </body>
 </html>
