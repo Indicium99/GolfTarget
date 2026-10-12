@@ -28,7 +28,7 @@
       touch-action: none;
     }
     #map {
-      height: 68dvh;
+      height: 78dvh; /* Kasvatettu tilaa kartalle */
       width: 100%;
       cursor: crosshair;
       background-color: #0f172a;
@@ -36,8 +36,8 @@
       position: relative;
     }
     #info-panel {
-      height: 32dvh;
-      padding: 10px;
+      height: 22dvh; /* Madallettu alapaneeli tyhjän tilan poistamiseksi */
+      padding: 6px 10px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
@@ -47,7 +47,7 @@
       z-index: 2000;
     }
 
-    /* VÄYLÄN PITUUS JA VERSIO YLHÄÄLLÄ KESKELLÄ KARTAN PÄÄLLÄ */
+    /* VAIN MITTA JA VERSIO YLHÄÄLLÄ KESKELLÄ KARTAN PÄÄLLÄ */
     .top-header-banner {
       position: absolute;
       top: 12px;
@@ -57,9 +57,9 @@
       background: rgba(15, 23, 42, 0.92);
       border: 1.5px solid #38bdf8;
       border-radius: 10px;
-      padding: 6px 14px;
+      padding: 5px 12px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.7);
-      font-size: 13px;
+      font-size: 14px;
       font-weight: bold;
       color: #ffffff;
       white-space: nowrap;
@@ -176,13 +176,13 @@
     }
     .active-mode { outline: 3px solid #ffffff; }
 
-    /* METRIKOIDEN TEKSTIT */
+    /* METRIKOIDEN TEKSTIT (TIIVIIMPI MUKAUTUS) */
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 6px;
       background: #1e293b;
-      padding: 12px;
+      padding: 8px 12px;
       border-radius: 10px;
       border: 1px solid #334155;
     }
@@ -190,21 +190,21 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 18px;
+      font-size: 16px;
       font-weight: bold;
     }
     .metric-subline {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 15px;
+      font-size: 13px;
       color: #cbd5e1;
       border-top: 1px dashed #475569;
-      padding-top: 6px;
+      padding-top: 4px;
     }
-    .highlight-yellow { color: #facc15; font-size: 22px; font-weight: bold; }
-    .highlight-blue { color: #38bdf8; font-size: 20px; font-weight: bold; }
-    .highlight-white { color: #ffffff; font-size: 20px; font-weight: bold; }
+    .highlight-yellow { color: #facc15; font-size: 19px; font-weight: bold; }
+    .highlight-blue { color: #38bdf8; font-size: 18px; font-weight: bold; }
+    .highlight-white { color: #ffffff; font-size: 18px; font-weight: bold; }
     
     .elevation-up { color: #4ade80; font-weight: bold; }
     .elevation-down { color: #f87171; font-weight: bold; }
@@ -253,9 +253,9 @@
 <body>
 
   <div id="map">
-    <!-- VÄYLÄN PITUUS JA VERSIO YLHÄÄLLÄ KESKELLÄ -->
+    <!-- VAIN MITTA JA VERSIO YLHÄÄLLÄ KESKELLÄ -->
     <div class="top-header-banner" id="top-header">
-      📍 Tii ➔ ⛳ Väylä: <span id="dist-total" style="color:#38bdf8;">-</span> m <span style="color:#facc15; font-weight: bold; margin-left: 4px;">(v1.2.0)</span>
+      <span id="dist-total" style="color:#38bdf8;">-</span> m <span style="color:#facc15; font-weight: bold; margin-left: 4px;">(v1.2.0)</span>
     </div>
 
     <!-- PAINIKE-KONTROLLIT OIKEALLA -->
@@ -316,6 +316,7 @@
     let currentMode = 'tee'; 
     let currentElevationDiffMeters = 0;
     let elevationTimeout = null;
+    let ignoreNextMapClick = false;
 
     let watchId = null;
     let userMarker = null;
@@ -419,7 +420,7 @@
       }
     }
 
-    /* GOLFKENTÄN HAKUTOIMINTO (ILMAN AUTOMAATTISTA TEKSTILISÄYSTÄ) */
+    /* GOLFKENTÄN HAKUTOIMINTO */
     async function searchGolfCourse() {
       const inputElem = document.getElementById('course-search-input');
       const searchQuery = inputElem.value.trim();
@@ -487,35 +488,37 @@
       updateModeButtonsUI();
     }
 
-    /* KORJATTU LUKITUSTILA: SEKTORI EI SIIRRY PAINIKETTA PAINETTAESSA */
+    /* KORJATTU KOHDE / LUKITUSTILA - TÄYSIN ESTETTY SEKTORIN HYPPÄÄMINEN PAINALLUKSESTA */
     function toggleTargetMode(e) {
       if (e) {
         e.stopPropagation();
         if (e.preventDefault) e.preventDefault();
       }
 
+      ignoreNextMapClick = true;
+
       if (currentMode !== 'target') {
-        // Siirrytään Target-tilaan ensimmäistä kertaa (auki)
         currentMode = 'target';
         isTargetLocked = false;
         map.dragging.disable();
       } else {
-        // Mikäli ollaan jo target-tilassa, vaihdetaan lukitustilaa (🔒 <-> 🎯)
         isTargetLocked = !isTargetLocked;
 
         if (isTargetLocked) {
-          // Lukitaan etäisyys nykyiseen kohteeseen
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(teePosition, activeTarget);
           map.dragging.disable();
         } else {
-          // Poistetaan lukitus -> pidetään sektori entisessä kohdassaan
           map.dragging.disable();
         }
       }
 
       updateModeButtonsUI();
       updateCalculations();
+
+      setTimeout(() => {
+        ignoreNextMapClick = false;
+      }, 300);
     }
 
     function toggleGPS(e) {
@@ -890,6 +893,8 @@
     }, { passive: false });
 
     map.on('click', function(e) {
+      if (ignoreNextMapClick) return;
+
       const originalEvent = e.originalEvent;
       if (originalEvent && (controlsContainer.contains(originalEvent.target) || headerContainer.contains(originalEvent.target))) {
         return;
