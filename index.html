@@ -342,7 +342,7 @@
   <div id="map-wrapper">
     <div id="map"></div>
 
-    <div class="vertical-version-tag">v3.8.0</div>
+    <div class="vertical-version-tag">v3.9.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -414,7 +414,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v3.8.0";
+    const APP_VERSION = "v3.9.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -584,21 +584,44 @@
       }
     }
 
-    function getScreenTouchToLatLng(containerPoint, offsetYPixels = 60) {
+    /* MATEMAATTISESTI AUKOTON KOORDINAATTIMUUNNOS MILLÄ TAHANSA PYÖRITYSKULMALLA */
+    function getScreenTouchToLatLng(touchOrEvent, offsetYPixels = 60) {
       const wrapperElem = document.getElementById('map-wrapper');
       const rect = wrapperElem.getBoundingClientRect();
 
+      // Kosketuksen/klikkauksen sijainti ruudun koordinaatistossa (pixels relative to map-wrapper)
+      const clientX = touchOrEvent.clientX !== undefined ? touchOrEvent.clientX : touchOrEvent.touches[0].clientX;
+      const clientY = touchOrEvent.clientY !== undefined ? touchOrEvent.clientY : touchOrEvent.touches[0].clientY;
+
+      const screenX = clientX - rect.left;
+      const screenY = clientY - rect.top;
+
+      // Näytön keskipiste (säiliön keskiö)
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
 
-      const dx = containerPoint.x - centerX;
-      const dy = (containerPoint.y - offsetYPixels) - centerY;
+      // Lasketaan pystysuora offset (näytön pystysuunnan ylöspäin = -60px)
+      const targetScreenX = screenX;
+      const targetScreenY = screenY - offsetYPixels;
 
+      // Vektori näytön keskipisteestä kohteeseen
+      const dx = targetScreenX - centerX;
+      const dy = targetScreenY - centerY;
+
+      // Kumotaan kartan CSS-pyöritys (kiertämällä vektoria -mapRotationDeg verran)
       const rad = (-mapRotationDeg * Math.PI) / 180;
-      const unrotatedX = centerX + (dx * Math.cos(rad) - dy * Math.sin(rad));
-      const unrotatedY = centerY + (dx * Math.sin(rad) + dy * Math.cos(rad));
+      const unrotatedDx = dx * Math.cos(rad) - dy * Math.sin(rad);
+      const unrotatedDy = dx * Math.sin(rad) + dy * Math.cos(rad);
 
-      return map.containerPointToLatLng(L.point(unrotatedX, unrotatedY));
+      // Keskipiste maailman pikselikoordinaatistossa (Leaflet map center world point)
+      const zoom = map.getZoom();
+      const centerWorldPoint = map.project(map.getCenter(), zoom);
+
+      // Kohdepiste maailman pikseleinä
+      const targetWorldPoint = L.point(centerWorldPoint.x + unrotatedDx, centerWorldPoint.y + unrotatedDy);
+
+      // Muunnetaan takaisin maantieteellisiksi koordinaateiksi (LatLng)
+      return map.unproject(targetWorldPoint, zoom);
     }
 
     function enableCustomOffsetDrag(marker, updatePosCallback) {
@@ -622,8 +645,7 @@
         e.stopPropagation();
 
         const touch = e.touches[0];
-        const containerPoint = map.mouseEventToContainerPoint(touch);
-        const newLatLng = getScreenTouchToLatLng(containerPoint, 60);
+        const newLatLng = getScreenTouchToLatLng(touch, 60);
 
         marker.setLatLng(newLatLng);
         updatePosCallback([newLatLng.lat, newLatLng.lng]);
@@ -707,7 +729,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/3.8.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/3.9.0' }
         });
         const results = await response.json();
 
@@ -1159,7 +1181,6 @@
       arrowGroup.addLayer(head);
     }
 
-    // KAARIVIIVAT ALKAVAT NYT 140 METRISTÄ (PAIVITETTY v3.8.0)
     function drawDistanceArcsByBearing(teePos, distTee, bearing, maxRatio) {
       distanceArcGroup.clearLayers();
       if (distTee < 140) return;
@@ -1260,8 +1281,7 @@
 
       if (currentMode === 'target') {
         const touch = e.touches ? e.touches[0] : e;
-        const containerPoint = map.mouseEventToContainerPoint(touch);
-        const latlng = getScreenTouchToLatLng(containerPoint, 60);
+        const latlng = getScreenTouchToLatLng(touch, 60);
 
         if (!isTargetLocked) {
           targetPosition = [latlng.lat, latlng.lng];
@@ -1340,8 +1360,7 @@
         return;
       }
 
-      const containerPoint = map.mouseEventToContainerPoint(originalEvent);
-      const latlng = getScreenTouchToLatLng(containerPoint, 0);
+      const latlng = getScreenTouchToLatLng(originalEvent, 0);
       const coords = [latlng.lat, latlng.lng];
 
       if (currentMode === 'tee') {
