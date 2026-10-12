@@ -84,7 +84,7 @@
       z-index: 9999;
       font-size: 13px;
       font-weight: bold;
-      color: rgba(255, 255, 255, 0.8);
+      color: rgba(255, 255, 255, 0.85);
       letter-spacing: 1px;
       pointer-events: none;
       white-space: nowrap;
@@ -336,7 +336,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v5.6.0</div>
+    <div class="vertical-version-tag">v5.8.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -409,7 +409,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v5.6.0";
+    const APP_VERSION = "v5.8.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
@@ -500,7 +500,6 @@
       });
     });
 
-    /* MARKERI-ELEMENTIT TÄSMÄLLEEN KOHDISTETTUINA */
     function createCustomMarkerElement(type) {
       const el = document.createElement('div');
       el.style.cursor = 'pointer';
@@ -511,7 +510,7 @@
                           <path d="M11 16 L21 16 L17 28 L15 28 Z" fill="#22c55e" stroke="#ffffff" stroke-width="0.8"/>
                         </svg>`;
       } else if (type === 'green') {
-        // Lipun tangon alapää (0,32)
+        // Lipuntanko alkaa tasan kohdasta (0,32)
         el.innerHTML = `<svg width="32" height="32" viewBox="0 0 32 32" style="filter: drop-shadow(0px 3px 5px rgba(0,0,0,0.9));">
                           <line x1="0" y1="2" x2="0" y2="32" stroke="#ffffff" stroke-width="2.5" stroke-linecap="round"/>
                           <path d="M0 2 L22 8 L0 14 Z" fill="#ef4444" stroke="#ffffff" stroke-width="0.8"/>
@@ -538,7 +537,6 @@
         .setLngLat(teePosition)
         .addTo(map);
 
-      // Lipuntangon alaosa ankkuroitu vasempaan alakulmaan
       greenMarker = new maplibregl.Marker({ element: createCustomMarkerElement('green'), anchor: 'bottom-left' })
         .setLngLat(greenPosition)
         .addTo(map);
@@ -547,6 +545,7 @@
         .setLngLat(targetPosition)
         .addTo(map);
 
+      // SORMEN DYNAAMINEN VETO PAINIKEVALINNAN MUKAAN (Ei turhaa offsetia)
       enableModeRestrictedDrag(teeMarker, 'tee', (coords) => {
         teePosition = coords;
         updateCalculations();
@@ -587,7 +586,6 @@
 
       updateCalculations();
 
-      // KOHTA 2: SÄÄTIETOJEN HAKU VIIVEISSÄ NOPEAA AVAAMISTA VARTEN
       setTimeout(() => {
         fetchWeatherData();
       }, 500);
@@ -619,7 +617,8 @@
         }
 
         const rect = map.getContainer().getBoundingClientRect();
-        const screenPoint = new maplibregl.Point(clientX - rect.left, clientY - rect.top - 60);
+        // Kohdistus täsmälleen kosketuskohtaan ilman hyppyjä
+        const screenPoint = new maplibregl.Point(clientX - rect.left, clientY - rect.top);
         const targetLngLat = map.unproject(screenPoint);
         const coords = [targetLngLat.lng, targetLngLat.lat];
 
@@ -646,7 +645,6 @@
       window.addEventListener('touchend', onPointerUp);
     }
 
-    /* TÄYSIN TARKKA KORJATTU OVERLAY-PIIRTO */
     function drawCanvasOverlay() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -656,7 +654,7 @@
       const pTee = map.project(teePosition);
       const pGreen = map.project(greenPosition);
 
-      // 1. HAJONTAYMPYRÄT ANKKUROITU LIPUNTANGON TYVEEN
+      // Hajontaympyrät pilkulleen lipuntangon alaosan kohdalla
       const distanceForDispersion = isPar3 ? totalDist : (targetPosition ? calculateDistance(targetPosition, greenPosition) : totalDist);
       
       const r5Point = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], distanceForDispersion * 0.05, 90));
@@ -665,7 +663,6 @@
       const pxRadius5 = Math.hypot(r5Point.x - pGreen.x, r5Point.y - pGreen.y);
       const pxRadius7 = Math.hypot(r7Point.x - pGreen.x, r7Point.y - pGreen.y);
 
-      // Ympyrä 5%
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, pxRadius5, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(250, 204, 21, 0.15)';
@@ -675,7 +672,6 @@
       ctx.setLineDash([4, 4]);
       ctx.stroke();
 
-      // Ympyrä 7%
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, pxRadius7, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(248, 113, 113, 0.08)';
@@ -700,7 +696,6 @@
         const distTee = calculateDistance(teePosition, activeTarget);
         const bearing = getBearing(teePosition, activeTarget);
 
-        // Keskijooni
         ctx.beginPath();
         ctx.moveTo(pTee.x, pTee.y);
         ctx.lineTo(pTarget.x, pTarget.y);
@@ -708,7 +703,6 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // Nuolenkärki
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 40, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 30, bearing + 20));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 30, bearing - 20));
@@ -723,11 +717,9 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORI LÄHTEE TII-MERKISTÄ JA PÄÄTTYY TÄSMÄLLEEN KOHTEEN KOHDALLE
         drawSectorConeOnCanvas(teePosition, distTee, bearing, 0.2222, false);
         drawSectorConeOnCanvas(teePosition, distTee, bearing, 0.1481, true);
 
-        // Katkoviiva kohteelta lipulle
         ctx.beginPath();
         ctx.moveTo(pTarget.x, pTarget.y);
         ctx.lineTo(pGreen.x, pGreen.y);
@@ -737,7 +729,6 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // KAARIVIIVAT JA SG-TEKSTIT ALKAEN 140 METRISTÄ
         if (distTee >= 140) {
           const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
@@ -760,19 +751,18 @@
             const sgVal = calculateSGValue(d, remToGreen);
             const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
 
-            ctx.font = 'bold 12px Arial';
+            ctx.font = 'bold 14px Arial';
             ctx.fillStyle = '#ffffff';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#000000';
             ctx.shadowBlur = 4;
-            ctx.fillText(sgText, pSg.x, pSg.y + 4);
+            ctx.fillText(sgText, pSg.x, pSg.y - 6);
             ctx.shadowBlur = 0;
           }
         }
       }
     }
 
-    /* SEKTORIN SIIVET LÄHTEVÄT TIISTÄ JA YHDISTYVÄT KAAREN KULMIIN */
     function drawSectorConeOnCanvas(teePos, distTee, bearing, ratio, isDashed) {
       const deltaAngle = Math.atan(ratio / 2) * (180 / Math.PI);
       const steps = 12;
@@ -887,7 +877,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/5.6.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/5.8.0' }
         });
         const results = await response.json();
 
@@ -939,6 +929,7 @@
       }
     }
 
+    // Tilan valinta ilman automaattista paikan muutosta!
     function setMode(mode, e) {
       triggerButtonGuard(e);
       currentMode = mode;
@@ -1316,15 +1307,15 @@
       fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
     }
 
-    function getOffsetLngLatFromPoint(point, offsetYPixels = 60) {
-      const targetPoint = new maplibregl.Point(point.x, point.y - offsetYPixels);
-      return map.unproject(targetPoint);
+    // Asetetaan koordinaatti kosketuksen kohdalle
+    function getOffsetLngLatFromPoint(point) {
+      return map.unproject(point);
     }
 
     map.on('click', (e) => {
       if (isInteractingWithUI) return;
 
-      const lngLat = getOffsetLngLatFromPoint(e.point, 0);
+      const lngLat = getOffsetLngLatFromPoint(e.point);
       const coords = [lngLat.lng, lngLat.lat];
 
       if (currentMode === 'tee') {
