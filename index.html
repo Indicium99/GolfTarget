@@ -316,7 +316,7 @@
     }
 
     .wind-arrow-svg {
-      transition: transform 0.3s ease;
+      transition: transform 0.2s ease-out;
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
     }
 
@@ -335,7 +335,7 @@
   <div id="map-wrapper">
     <div id="map"></div>
 
-    <div class="vertical-version-tag">v5.0.0</div>
+    <div class="vertical-version-tag">v5.1.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -408,10 +408,10 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v5.0.0";
+    const APP_VERSION = "v5.1.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
-    let teePosition = [24.681644, 60.261447];   // MapLibre uses [lng, lat]
+    let teePosition = [24.681644, 60.261447];   // MapLibre format [lng, lat]
     let greenPosition = [24.680158, 60.258729]; 
     let targetPosition = null;
     let lockedTargetDistance = 0;
@@ -442,7 +442,6 @@
     let teeWindMarker, greenWindMarker, sectorWindMarker;
     let arcSgMarkers = [];
 
-    // Alustetaan MapLibre GL satelliittikartoilla
     const map = new maplibregl.Map({
       container: 'map',
       style: {
@@ -491,7 +490,6 @@
       });
     });
 
-    // Markkerielementtien luonti
     function createCustomMarkerElement(type) {
       const el = document.createElement('div');
       if (type === 'tee') {
@@ -522,7 +520,6 @@
     targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
 
     map.on('load', () => {
-      // GeoJSON Lähteet
       map.addSource('lines-source', {
         type: 'geojson',
         data: { type: 'FeatureCollection', features: [] }
@@ -533,7 +530,6 @@
         data: { type: 'FeatureCollection', features: [] }
       });
 
-      // Taso: Päälyöntilinjat ja Sektorit
       map.addLayer({
         id: 'lines-layer',
         type: 'line',
@@ -545,7 +541,6 @@
         }
       });
 
-      // Taso: Hajontaympyrät (Fill)
       map.addLayer({
         id: 'dispersion-fill-layer',
         type: 'fill',
@@ -556,7 +551,6 @@
         }
       });
 
-      // Taso: Hajontaympyrät (Outline)
       map.addLayer({
         id: 'dispersion-line-layer',
         type: 'line',
@@ -567,7 +561,7 @@
         }
       });
 
-      // Luodaan interaktiiviset Markkerit
+      // Markerit
       teeMarker = new maplibregl.Marker({ element: createCustomMarkerElement('tee'), anchor: 'bottom-left', draggable: true })
         .setLngLat(teePosition)
         .addTo(map);
@@ -592,12 +586,17 @@
       });
       greenMarker.on('dragend', () => fetchWeatherData());
 
-      // Päivitetään kompassikuvakkeen osoitin kartan pyöriessä
+      // KARTAN ROTAATION AINANEN PÄIVITYS: PÄIVITTÄÄ KOMPASSIN JA TUULINUOLTEN ORIENTAATION
       map.on('rotate', () => {
         const bearing = map.getBearing();
         const needle = document.getElementById('compass-needle');
         if (needle) {
           needle.style.transform = `rotate(${-bearing}deg)`;
+        }
+        renderWindOverlayIcons();
+        if (!totalIsPar3()) {
+          const activeTargetPos = targetPosition || greenPosition;
+          renderSectorWindBadge(activeTargetPos, getBearing(teePosition, activeTargetPos));
         }
       });
 
@@ -605,13 +604,16 @@
       fetchWeatherData();
     });
 
+    function totalIsPar3() {
+      return calculateDistance(teePosition, greenPosition) < 200;
+    }
+
     function cycleCompassMode(e) {
       triggerButtonGuard(e);
       compassState = (compassState + 1) % 3;
       const badgeElem = document.getElementById('compass-lock-badge');
 
       if (compassState === 1) {
-        // VÄYLÄ YLÖS + LUKITUS
         const bearing = getBearing(teePosition, greenPosition);
         map.rotateTo((360 - bearing) % 360, { duration: 400 });
         map.dragRotate.disable();
@@ -619,14 +621,12 @@
         isRotationLocked = true;
         badgeElem.innerText = "🔒";
       } else if (compassState === 2) {
-        // POHJOINEN YLÖS + LUKITUS
         map.rotateTo(0, { duration: 400 });
         map.dragRotate.disable();
         map.touchZoomRotate.disableRotation();
         isRotationLocked = true;
         badgeElem.innerText = "🔒";
       } else {
-        // VAPAA PYÖRITYS
         map.dragRotate.enable();
         map.touchZoomRotate.enableRotation();
         isRotationLocked = false;
@@ -684,7 +684,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/5.0.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/5.1.0' }
         });
         const results = await response.json();
 
@@ -817,7 +817,6 @@
       }
     }
 
-    // Geometria- ja Etäisyyslaskenta
     function calculateDistance(pos1, pos2) {
       if (!pos1 || !pos2) return 0;
       const R = 6371e3;
@@ -844,7 +843,7 @@
       const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distance / R) * Math.cos(lat1),
                                      Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2));
 
-      return [lon2 * 180 / Math.PI, lat2 * 180 / Math.PI]; // MapLibre format [lng, lat]
+      return [lon2 * 180 / Math.PI, lat2 * 180 / Math.PI];
     }
 
     function getBearing(pos1, pos2) {
@@ -876,11 +875,13 @@
       }
     }
 
+    /* KORJATTU TUULINUOLTEN ORIENTAATIO KARTAN ROTAATION MUKAAN */
     function renderWindOverlayIcons() {
       if (teeWindMarker) teeWindMarker.remove();
       if (greenWindMarker) greenWindMarker.remove();
 
-      const dirTo = (currentWindDirection + 180) % 360;
+      const mapBearing = map.getBearing ? map.getBearing() : 0;
+      const dirTo = (currentWindDirection + 180 - mapBearing) % 360;
 
       const createWindElem = () => {
         const el = document.createElement('div');
@@ -911,7 +912,8 @@
       if (sectorWindMarker) sectorWindMarker.remove();
       if (!targetPos) return;
 
-      const dirTo = (currentWindDirection + 180) % 360;
+      const mapBearing = map.getBearing ? map.getBearing() : 0;
+      const dirTo = (currentWindDirection + 180 - mapBearing) % 360;
       const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 45, bearing + 85);
 
       const el = document.createElement('div');
@@ -1087,12 +1089,13 @@
       document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
-    function createCircleGeoJSON(center, radiusMeters) {
+    /* KORJATTU HAJONTAYMPYRÄN KESKIPISTE täsmälleen viheriön (greenPosition) kohdalle */
+    function createCircleGeoJSON(centerLngLat, radiusMeters) {
       const points = 64;
       const coords = [];
       for (let i = 0; i < points; i++) {
         const bearing = (i * 360) / points;
-        coords.push(getDestinationPoint(center[0], center[1], radiusMeters, bearing));
+        coords.push(getDestinationPoint(centerLngLat[0], centerLngLat[1], radiusMeters, bearing));
       }
       coords.push(coords[0]);
       return coords;
@@ -1170,7 +1173,7 @@
           }
         );
 
-        // Ulko- ja Sisesektori
+        // Sektorit
         lineFeatures.push(
           {
             type: 'Feature',
@@ -1252,11 +1255,52 @@
       fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
     }
 
-    // Kosketuksen/Klikkauksen kuuntelu
+    /* KORJATTU KOSKETUS: SORMEN NOSTO 60PX YLÖSPÄIN JA SORMEN ALTA PALAUTUS */
+    function getOffsetLngLatFromPoint(point, offsetYPixels = 60) {
+      const targetPoint = new maplibregl.Point(point.x, point.y - offsetYPixels);
+      return map.unproject(targetPoint);
+    }
+
+    function handlePointerMoveWithOffset(e) {
+      if (isInteractingWithUI) return;
+
+      if (currentMode === 'target') {
+        const lngLat = getOffsetLngLatFromPoint(e.point, 60);
+        const coords = [lngLat.lng, lngLat.lat];
+
+        if (!isTargetLocked) {
+          targetPosition = coords;
+        } else {
+          const newBearing = getBearing(teePosition, coords);
+          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
+        }
+        updateCalculations();
+      }
+    }
+
+    map.on('mousemove', (e) => handlePointerMoveWithOffset(e));
+
+    map.on('touchmove', (e) => {
+      if (e.points && e.points.length === 1 && currentMode === 'target') {
+        const point = e.points[0];
+        const lngLat = getOffsetLngLatFromPoint(point, 60);
+        const coords = [lngLat.lng, lngLat.lat];
+
+        if (!isTargetLocked) {
+          targetPosition = coords;
+        } else {
+          const newBearing = getBearing(teePosition, coords);
+          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
+        }
+        updateCalculations();
+      }
+    });
+
     map.on('click', (e) => {
       if (isInteractingWithUI) return;
 
-      const coords = [e.lngLat.lng, e.lngLat.lat];
+      const lngLat = getOffsetLngLatFromPoint(e.point, 0);
+      const coords = [lngLat.lng, lngLat.lat];
 
       if (currentMode === 'tee') {
         teePosition = coords;
@@ -1270,22 +1314,6 @@
         targetPosition = coords;
       }
       updateCalculations();
-    });
-
-    map.on('mousemove', (e) => {
-      if (isInteractingWithUI) return;
-
-      if (currentMode === 'target') {
-        const coords = [e.lngLat.lng, e.lngLat.lat];
-
-        if (!isTargetLocked) {
-          targetPosition = coords;
-        } else {
-          const newBearing = getBearing(teePosition, coords);
-          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], lockedTargetDistance, newBearing);
-        }
-        updateCalculations();
-      }
     });
 
     updateModeButtonsUI();
