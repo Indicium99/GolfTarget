@@ -42,7 +42,7 @@
     }
     #info-panel {
       height: 12dvh;
-      padding: 4px 10px;
+      padding: 6px 12px;
       box-sizing: border-box;
       background-color: #0f172a;
       display: flex;
@@ -208,13 +208,13 @@
     }
     .active-mode { outline: 3px solid #ffffff; }
 
-    /* METRIKOIDEN TEKSTIT JA VALINTAPAINIKKEET */
+    /* YHTENÄISTETTY ALAPANEELI JA VÄRITYS */
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
       background: #1e293b;
-      padding: 5px 10px;
+      padding: 6px 10px;
       border-radius: 8px;
       border: 1px solid #334155;
     }
@@ -234,8 +234,6 @@
       border-top: 1px dashed #475569;
       padding-top: 3px;
     }
-    .highlight-yellow { color: #facc15; font-size: 16px; font-weight: bold; }
-    .gust-info { color: #facc15; font-size: 13px; font-weight: normal; margin-left: 2px; }
     
     /* KLIKATTAVAT PLAYS LIKE -TEKIJÄT */
     .toggleable-factor {
@@ -248,18 +246,18 @@
       -webkit-tap-highlight-color: transparent;
     }
     .toggleable-factor.active {
-      background: rgba(56, 189, 248, 0.2);
+      background: rgba(56, 189, 248, 0.15);
       border-color: #38bdf8;
     }
     .toggleable-factor.inactive {
-      opacity: 0.45;
+      opacity: 0.4;
       text-decoration: line-through;
     }
 
-    /* DYNAMISESTI YHTENÄISET VÄRIT ALAPANEELISSA (PUNAINEN = LYÖTÄVÄ PIDEMMÄLLE, VIHREÄ = AUTTAVA) */
+    /* YHTENÄISET DYNAMISEI VÄRIT ALAPANEELISSA (PUNAINEN = VAATII PIDEMMÄN LYÖNNIN, VIHREÄ = AUTTAVA) */
     .impact-longer { color: #f87171 !important; font-weight: bold; }
     .impact-shorter { color: #4ade80 !important; font-weight: bold; }
-    .impact-neutral { color: #cbd5e1 !important; font-weight: normal; }
+    .impact-neutral { color: #ffffff !important; font-weight: bold; }
 
     /* SG DYNAMISESTI PUNAINEN/VIHREÄ */
     .sg-positive { color: #4ade80; font-weight: bold; }
@@ -293,7 +291,7 @@
 
   <div id="map">
     <!-- PYSTYSUORA VERSIOTIETO VASEMMASSA REUNASSA -->
-    <div class="vertical-version-tag">v2.5.0</div>
+    <div class="vertical-version-tag">v2.6.0</div>
 
     <!-- TIIVIS YLÄBANNERI -->
     <div class="top-header-banner" id="top-header">
@@ -329,7 +327,7 @@
   <div id="info-panel">
     <div class="metrics-container">
       <div class="metric-line">
-        <span class="highlight-yellow">Plays like <span id="plays-like-val">-</span>m <span id="plays-like-gust-val" class="gust-info"></span></span>
+        <span>Plays like <span id="plays-like-val" class="impact-neutral">-</span>m <span id="plays-like-gust-val" style="font-size: 13px; font-weight: normal;"></span></span>
         <span id="elevation-toggle" class="toggleable-factor active" onclick="toggleFactor('elevation', event)">
           <span>Korkeus: <span id="elevation-diff">-</span></span>
         </span>
@@ -350,7 +348,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v2.5.0";
+    const APP_VERSION = "v2.6.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -451,7 +449,6 @@
       iconAnchor: [8, 8]
     });
 
-    // MARKKERIT DRAGGABLE-OMINAISUUDELLA JA DYNAAMISELLA REAASIAKAISELLA PÄIVITYKSELLÄ
     let teeMarker = L.marker(teePosition, {icon: golfTeeIcon, draggable: true}).addTo(map);
     let greenMarker = L.marker(greenPosition, {icon: golfGreenIcon, draggable: true}).addTo(map);
     let targetMarker = null;
@@ -476,7 +473,13 @@
     let windMarkersGroup = L.layerGroup().addTo(map);
     let sectorWindBadgeGroup = L.layerGroup().addTo(map);
 
-    // TIIN JA LIPUN REAALIAIKAINEN SORMILLA VETÄMINEN
+    // OLETUSKOHDE AVATTAESSA (250m TIILTÄ) EIKÄ TÄYSIN SAMA KUIN VIHERIÖ
+    const initialBearing = getBearing(teePosition, greenPosition);
+    const initialTotalDist = calculateDistance(teePosition, greenPosition);
+    const initialTargetDist = Math.min(250, Math.round(initialTotalDist * 0.75));
+    targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
+
+    // TIIN JA LIPUN REAALIAIKAINEN DRAGGING
     teeMarker.on('drag', function(e) {
       teePosition = [e.latlng.lat, e.latlng.lng];
       renderWindOverlayIcons();
@@ -539,7 +542,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/2.5.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/2.6.0' }
         });
         const results = await response.json();
 
@@ -550,7 +553,9 @@
           map.setView([lat, lon], 17);
           teePosition = [lat, lon];
           greenPosition = getDestinationPoint(lat, lon, 350, 0);
-          targetPosition = null;
+          
+          const bearing = getBearing(teePosition, greenPosition);
+          targetPosition = getDestinationPoint(lat, lon, 240, bearing);
 
           teeMarker.setLatLng(teePosition);
           greenMarker.setLatLng(greenPosition);
@@ -828,7 +833,6 @@
 
     function renderElevationUI() {
       const diffElem = document.getElementById('elevation-diff');
-      // KORKEUSERON VÄRIT: +MÄKI ON PUNAINEN (LYÖTÄVÄ PIDEMMÄLLE), -MÄKI ON VIHREÄ (AUTTAVA)
       if (currentElevationDiffMeters > 0) {
         diffElem.innerHTML = `<span class="impact-longer">+${currentElevationDiffMeters} m</span>`;
       } else if (currentElevationDiffMeters < 0) {
@@ -839,7 +843,6 @@
       updateBottomPanelMetrics();
     }
 
-    /* STROKES GAINED (SG) JA PUNAINEN/VIHREÄ MUOTOILU */
     function renderStrokesGainedHTML(distTeeMeters, distGreenMeters) {
       if (!distTeeMeters || !distGreenMeters) return "SG: 0.0 (+0.0 / -0.2)";
       
@@ -895,18 +898,18 @@
       const windSpeedInt = Math.round(currentWindSpeed);
       const gustSpeedInt = Math.round(currentWindGusts);
 
-      // YHTENÄISET VÄRIT ALAPANEELISSA (PUNAINEN = LYÖTÄVÄ PIDEMMÄLLE, VIHREÄ = AUTTAVA)
+      // YHTENÄISTETTY VÄRILOGIIKKA ALAPANEELISSA
       if (tailwindComponent > 0.2) {
         windText = `<span class="impact-shorter">🍃 Tuuli: ${windSpeedInt} m/s ➔ Myötä (${windImpactFormatted})</span>`;
       } else if (tailwindComponent < -0.2) {
         windText = `<span class="impact-longer">💨 Tuuli: ${windSpeedInt} m/s ➔ Vasta (${windImpactFormatted})</span>`;
       } else {
-        windText = `<span class="impact-neutral">🌬️ Tuuli: ${windSpeedInt} m/s ➔ Sivutuuli</span>`;
+        windText = `<span>🌬️ Tuuli: ${windSpeedInt} m/s ➔ Sivutuuli</span>`;
       }
 
       let tempClass = "impact-neutral";
-      if (tempDistanceImpact > 0) tempClass = "impact-longer"; // Kylmä pallo ei lennä -> pitää lyödä pidemmälle
-      else if (tempDistanceImpact < 0) tempClass = "impact-shorter"; // Lämmin pallo lentää paremmin -> auttava
+      if (tempDistanceImpact > 0) tempClass = "impact-longer";
+      else if (tempDistanceImpact < 0) tempClass = "impact-shorter";
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
@@ -916,8 +919,18 @@
       
       document.getElementById('sg-val').innerHTML = renderStrokesGainedHTML(distTee, distGreen);
 
-      document.getElementById('plays-like-val').innerText = playsLikeDistance;
-      
+      // PLAYS LIKE VÄRILOGIIKKA YHTENÄISTETTY (PUNAINEN = PIDEMPI MATKA, VIHREÄ = LYHYEMPI MATKA)
+      const playsLikeElem = document.getElementById('plays-like-val');
+      playsLikeElem.innerText = playsLikeDistance;
+
+      if (playsLikeDistance > distTee) {
+        playsLikeElem.className = "impact-longer";
+      } else if (playsLikeDistance < distTee) {
+        playsLikeElem.className = "impact-shorter";
+      } else {
+        playsLikeElem.className = "impact-neutral";
+      }
+
       if (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) {
         document.getElementById('plays-like-gust-val').innerText = `(${playsLikeGustDistance}m ${gustSpeedInt} m/s)`;
       } else {
@@ -927,9 +940,9 @@
       document.getElementById('wind-text').innerHTML = windText;
       document.getElementById('temp-text').innerHTML = `<span class="${tempClass}">🌡️ ${currentTempC}°C (${tempImpactFormatted})</span>`;
 
-      // DYNAAMINEN TARKKA DISPERSION-YMPYRÄ: TÄSMÄLLEEN 5 % MATKASTA ILMAN ALARAJOJA/ESTEITÄ
+      // HAJONTAYMPYRÄ (5% MATKASTA): PAR 3 JA SUORAAN TIILTÄ/KOHTEELTA LIPULLE
       const distanceForDispersion = targetPosition ? calculateDistance(targetPosition, greenPosition) : calculateDistance(teePosition, greenPosition);
-      const dispersionRadiusMeters = (distanceForDispersion * 0.05); // EI Math.max, toimii täydellisesti alle 100m
+      const dispersionRadiusMeters = (distanceForDispersion * 0.05);
       greenDispersionCircle.setRadius(dispersionRadiusMeters);
       greenDispersionCircle.setLatLng(greenPosition);
     }
@@ -1035,10 +1048,19 @@
       });
     }
 
-    function handlePointerMove(latlng) {
+    // SIIRRON OFFSET-KORJAUS (PISTE SORMEN YLÄPUOLELLE ~40px)
+    function handlePointerMoveWithOffset(e) {
       if (isInteractingWithUI || isMultiTouchActive) return;
 
       if (currentMode === 'target') {
+        const touch = e.touches ? e.touches[0] : e;
+        const containerPoint = map.mouseEventToContainerPoint(touch);
+        
+        // Siirretään kosketuspistettä 40px ylöspäin
+        containerPoint.y -= 40;
+        
+        const latlng = map.containerPointToLatLng(containerPoint);
+
         if (!isTargetLocked) {
           targetPosition = [latlng.lat, latlng.lng];
         } else {
@@ -1050,7 +1072,7 @@
     }
 
     map.on('mousemove', function(e) {
-      handlePointerMove(e.latlng);
+      if (currentMode === 'target') handlePointerMoveWithOffset(e.originalEvent);
     });
 
     const mapElement = document.getElementById('map');
@@ -1081,10 +1103,7 @@
 
       if (currentMode === 'target' && e.touches.length === 1) {
         e.preventDefault();
-        const touch = e.touches[0];
-        const containerPoint = map.mouseEventToContainerPoint(touch);
-        const latlng = map.containerPointToLatLng(containerPoint);
-        handlePointerMove(latlng);
+        handlePointerMoveWithOffset(e);
       }
     }, { passive: false });
 
@@ -1107,7 +1126,7 @@
         greenMarker.setLatLng(coords);
         renderWindOverlayIcons();
       } else if (currentMode === 'target' && !isTargetLocked) {
-        handlePointerMove(e.latlng);
+        handlePointerMoveWithOffset(e.originalEvent);
       }
       updateCalculations();
     });
