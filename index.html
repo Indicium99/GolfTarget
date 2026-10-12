@@ -235,6 +235,19 @@
       filter: drop-shadow(0px 3px 6px rgba(0,0,0,0.9));
     }
 
+    .sector-wind-badge {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1.5px solid #facc15;
+      color: #ffffff;
+      font-size: 11px;
+      font-weight: bold;
+      padding: 2px 6px;
+      border-radius: 6px;
+      white-space: nowrap;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.7);
+      pointer-events: none;
+    }
+
     .gps-user-marker {
       background: #38bdf8;
       border: 2px solid #ffffff;
@@ -251,10 +264,10 @@
 <body>
 
   <div id="map">
-    <!-- TIIVIS YLÄBANNERI VAIN IKONEILLA & STROKES GAINED -->
+    <!-- TIIVIS YLÄBANNERI VAIN IKONEILLA & STROKES GAINED (VÄYLÄ / RAFFI) -->
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
-        📍 <span id="dist-total" style="color:#38bdf8;">-</span> m <span style="color:#facc15; font-weight: bold; margin-left: 6px;">(v1.8.0)</span>
+        📍 <span id="dist-total" style="color:#38bdf8;">-</span> m <span style="color:#facc15; font-weight: bold; margin-left: 6px;">(v1.9.0)</span>
       </div>
       <div class="top-banner-line2">
         🎯 <span id="top-dist-tee" style="color:#38bdf8;">-</span>m &nbsp;|&nbsp; ⛳ <span id="top-dist-green" style="color:#ffffff;">-</span>m &nbsp;|&nbsp; ↔️ <span id="sector-width" style="color:#cbd5e1;">-</span> &nbsp;|&nbsp; 📈 <span id="sg-val" style="color:#4ade80;">SG: -</span>
@@ -300,9 +313,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v1.8.0";
-    
-    // SYÖTÄ TÄHÄN OMA GOOGLE MAPS API KEY (JOS OLEMASSA). JOS TYHJÄ, KÄYTETÄÄN VARAMALLIA.
+    const APP_VERSION = "v1.9.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -316,6 +327,10 @@
     let currentElevationDiffMeters = 0;
     let elevationTimeout = null;
     let isInteractingWithUI = false;
+
+    // KAKDEN SORMINEN ELEIDEN SUOJAUS (PINCH / PAN)
+    let isMultiTouchActive = false;
+    let multiTouchCooldownTimer = null;
 
     let watchId = null;
     let userMarker = null;
@@ -408,6 +423,7 @@
     let arrowGroup = L.layerGroup().addTo(map);
     let distanceArcGroup = L.layerGroup().addTo(map);
     let windMarkersGroup = L.layerGroup().addTo(map);
+    let sectorWindBadgeGroup = L.layerGroup().addTo(map);
 
     function triggerButtonGuard(e) {
       if (e) {
@@ -434,7 +450,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/1.8.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/1.9.0' }
         });
         const results = await response.json();
 
@@ -660,13 +676,28 @@
       windMarkersGroup.addLayer(greenWindMarker);
     }
 
-    /* GOOGLE MAPS ELEVATION API & VARAJÄRJESTELMÄ OPEN-METEO */
+    function renderSectorWindBadge(targetPos, bearing) {
+      sectorWindBadgeGroup.clearLayers();
+      if (!targetPos) return;
+
+      const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 18, bearing + 90);
+
+      const badgeIcon = L.divIcon({
+        className: 'clean-wind-arrow-wrapper',
+        html: `<div class="sector-wind-badge">💨 ${currentWindSpeed} m/s</div>`,
+        iconSize: [80, 24],
+        iconAnchor: [40, 12]
+      });
+
+      const badgeMarker = L.marker(badgePos, { icon: badgeIcon, interactive: false });
+      sectorWindBadgeGroup.addLayer(badgeMarker);
+    }
+
     function fetchElevationDifferenceDebounced(teePos, targetPos) {
       clearTimeout(elevationTimeout);
       elevationTimeout = setTimeout(async () => {
         try {
           if (GOOGLE_MAPS_API_KEY) {
-            // GOOGLE MAPS ELEVATION API
             const url = `https://maps.googleapis.com/maps/api/elevation/json?locations=${teePos[0]},${teePos[1]}|${targetPos[0]},${targetPos[1]}&key=${GOOGLE_MAPS_API_KEY}`;
             const response = await fetch(url);
             const data = await response.json();
@@ -680,7 +711,6 @@
             }
           }
 
-          // VARAJÄRJESTELMÄ: OPEN-METEO ELEVATION API
           const response = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${teePos[0]},${targetPos[0]}&longitude=${teePos[1]},${targetPos[1]}`);
           const data = await response.json();
 
@@ -708,21 +738,25 @@
       updateBottomPanelMetrics();
     }
 
-    /* STROKES GAINED (SG) ODOTUSARVO - BROADIE MODEL */
+    /* STROKES GAINED (SG) ODOTUSARVO: VÄYLÄ VS. RAFFI */
     function calculateStrokesGained(distTeeMeters, distGreenMeters) {
-      if (!distTeeMeters || !distGreenMeters) return "0.0";
+      if (!distTeeMeters || !distGreenMeters) return "0.0 (+0.0)";
       
       const yardsStart = distTeeMeters * 1.09361;
       const yardsRem = distGreenMeters * 1.09361;
 
-      // PGA Tour benchmark -kaavat odotetuille lyönneille
+      // PGA Tour benchmark - kaavat odotetuille lyönneille
       const expStart = 0.82 + 0.0084 * yardsStart;
-      const expRem = 0.82 + 0.0084 * yardsRem;
+      const expRemFairway = 0.82 + 0.0084 * yardsRem;
+      const expRemRough = 1.15 + 0.0092 * yardsRem; // Raffin suurempi odotusarvo
 
-      // SG-arvo
-      const sgValue = expStart - (expRem + 1);
-      const formatted = sgValue >= 0 ? `+${sgValue.toFixed(1)}` : sgValue.toFixed(1);
-      return formatted;
+      const sgFairway = expStart - (expRemFairway + 1);
+      const sgRough = expStart - (expRemRough + 1);
+
+      const fmtFW = sgFairway >= 0 ? `+${sgFairway.toFixed(1)}` : sgFairway.toFixed(1);
+      const fmtRough = sgRough >= 0 ? `+${sgRough.toFixed(1)}` : sgRough.toFixed(1);
+
+      return `${fmtFW} (${fmtRough})`;
     }
 
     function updateBottomPanelMetrics() {
@@ -745,7 +779,7 @@
       const elevationImpact = Math.round(currentElevationDiffMeters);
 
       const playsLikeDistance = Math.round(distTee + windDistanceImpact + tempDistanceImpact + elevationImpact);
-      const sgValue = calculateStrokesGained(distTee, distGreen);
+      const sgText = calculateStrokesGained(distTee, distGreen);
 
       let windText = "";
       let windImpactFormatted = windDistanceImpact >= 0 ? `+${windDistanceImpact}m` : `${windDistanceImpact}m`;
@@ -760,16 +794,12 @@
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
-      // Päivitetään yläbanneri mukaan lukien STROKES GAINED (SG)
       document.getElementById('top-dist-tee').innerText = distTee;
       document.getElementById('top-dist-green').innerText = targetPosition ? distGreen : 0;
       document.getElementById('sector-width').innerText = `${sectorWidthInner} / ${sectorWidthOuter}m`;
       
-      const sgElem = document.getElementById('sg-val');
-      sgElem.innerText = `SG: ${sgValue}`;
-      sgElem.style.color = parseFloat(sgValue) >= 0 ? "#4ade80" : "#f87171";
+      document.getElementById('sg-val').innerText = `SG: ${sgText}`;
 
-      // Päivitetään alapaneelin arvot
       document.getElementById('plays-like-val').innerText = playsLikeDistance;
       document.getElementById('wind-text').innerHTML = windText;
       document.getElementById('temp-text').innerHTML = `🌡️ ${currentTempC}°C (${tempImpactFormatted})`;
@@ -854,6 +884,7 @@
 
           drawDistanceArcsByBearing(teePosition, distTee, bearing, 0.2222);
           drawCenterArrowExtension(targetPosition, bearing, 50);
+          renderSectorWindBadge(targetPosition, bearing);
 
           lineToGreen.setLatLngs([targetPosition, greenPosition]);
         } else {
@@ -870,12 +901,13 @@
 
           const defaultEndPos = getDestinationPoint(teePosition[0], teePosition[1], defaultDistance, bearing);
           drawCenterArrowExtension(defaultEndPos, bearing, 50);
+          renderSectorWindBadge(defaultEndPos, bearing);
         }
       });
     }
 
     function handlePointerMove(latlng) {
-      if (isInteractingWithUI) return;
+      if (isInteractingWithUI || isMultiTouchActive) return;
 
       if (currentMode === 'target') {
         if (!isTargetLocked) {
@@ -894,8 +926,30 @@
 
     const mapElement = document.getElementById('map');
     
+    /* MONISORMISEN KOSKETUKSEN (PINCH/PAN) SEURANTA */
+    mapElement.addEventListener('touchstart', function(e) {
+      if (e.touches.length > 1) {
+        isMultiTouchActive = true;
+        clearTimeout(multiTouchCooldownTimer);
+      }
+    }, { passive: false });
+
+    mapElement.addEventListener('touchend', function(e) {
+      if (e.touches.length < 2) {
+        clearTimeout(multiTouchCooldownTimer);
+        multiTouchCooldownTimer = setTimeout(() => {
+          isMultiTouchActive = false;
+        }, 500); // 500ms viive sormien irrotuksen jälkeen estää hypyn
+      }
+    }, { passive: false });
+
     mapElement.addEventListener('touchmove', function(e) {
-      if (isInteractingWithUI) return;
+      if (isInteractingWithUI || isMultiTouchActive) return;
+
+      if (e.touches.length > 1) {
+        isMultiTouchActive = true;
+        return;
+      }
 
       if (currentMode === 'target' && e.touches.length === 1) {
         e.preventDefault();
@@ -907,7 +961,7 @@
     }, { passive: false });
 
     map.on('click', function(e) {
-      if (isInteractingWithUI) return;
+      if (isInteractingWithUI || isMultiTouchActive) return;
 
       const originalEvent = e.originalEvent;
       if (originalEvent && (controlsContainer.contains(originalEvent.target) || headerContainer.contains(originalEvent.target))) {
