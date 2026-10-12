@@ -342,7 +342,7 @@
   <div id="map-wrapper">
     <div id="map"></div>
 
-    <div class="vertical-version-tag">v4.2.0</div>
+    <div class="vertical-version-tag">v4.3.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -414,7 +414,7 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
   <script>
-    const APP_VERSION = "v4.2.0";
+    const APP_VERSION = "v4.3.0";
     const GOOGLE_MAPS_API_KEY = ""; 
 
     let teePosition = [60.261447, 24.681644];   
@@ -594,9 +594,9 @@
         isRotationLocked = false;
         badgeElem.innerText = "";
       }
+      updateCalculations();
     }
 
-    /* AUKOTON MUUNNOS: NÄYTÖN KOSKETUS -> KARTAN KOORDINAATIKSI */
     function getScreenTouchToLatLng(touchOrEvent, offsetYPixels = 60) {
       const wrapperElem = document.getElementById('map-wrapper');
       const rect = wrapperElem.getBoundingClientRect();
@@ -610,14 +610,12 @@
       const centerX = rect.width / 2;
       const centerY = rect.height / 2;
 
-      // Pystysuora 60px sormen nosto ylöspäin
       const targetScreenX = screenX;
       const targetScreenY = screenY - offsetYPixels;
 
       const dx = targetScreenX - centerX;
       const dy = targetScreenY - centerY;
 
-      // Muunnetaan näytön siirtymä karttakoordinaatistoon ottaen CSS-rotaatio huomioon
       const rad = (-mapRotationDeg * Math.PI) / 180;
       const unrotatedDx = dx * Math.cos(rad) - dy * Math.sin(rad);
       const unrotatedDy = dx * Math.sin(rad) + dy * Math.cos(rad);
@@ -735,7 +733,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/4.2.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/4.3.0' }
         });
         const results = await response.json();
 
@@ -1340,12 +1338,13 @@
         if (e.touches.length === 0) {
           multiTouchCooldownTimer = setTimeout(() => {
             isMultiTouchActive = false;
-          }, 400);
+            updateCalculations(); // Paivitettaan sektoripisteet heti pyorityksen paatyttya
+          }, 200);
         }
       }
     }, { passive: false });
 
-    /* KORJATTU KAHDEN SORMEN PANOROINTI JA PYÖRITYS */
+    /* KAHDEN SORMEN SIIRTO JA ROTAATIO (VAKAUTETTU JA SUUNNATTU KORJATTU) */
     wrapperElement.addEventListener('touchmove', function(e) {
       if (isInteractingWithUI) return;
 
@@ -1364,17 +1363,17 @@
           setMapRotation(newRotation);
         }
 
-        // 2. Panorointi / Siirto kahdella sormella (Aukoton trigonometrinen muunnos)
+        // 2. Panorointi / Siirto kahdella sormella (Aukoton suuntaus korjattu)
         const currentCenter = getTouchCenter(e.touches[0], e.touches[1]);
         if (lastPanTouchCenter) {
           const dx = currentCenter.x - lastPanTouchCenter.x;
           const dy = currentCenter.y - lastPanTouchCenter.y;
 
-          const rad = (-mapRotationDeg * Math.PI) / 180;
+          // Trigonometrisesti korjattu sormien liikkeen kääntö
+          const rad = (mapRotationDeg * Math.PI) / 180;
           const rotatedDx = dx * Math.cos(rad) - dy * Math.sin(rad);
           const rotatedDy = dx * Math.sin(rad) + dy * Math.cos(rad);
 
-          // Siirretään karttaa suoraan pikseleinä vastakkaiseen suuntaan
           map.panBy([-rotatedDx, -rotatedDy], { animate: false });
         }
         lastPanTouchCenter = currentCenter;
