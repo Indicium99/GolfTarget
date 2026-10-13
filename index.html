@@ -143,7 +143,8 @@
     .search-wrapper-left {
       position: relative;
       display: flex;
-      align-items: center;
+      flex-direction: column;
+      align-items: flex-start;
     }
 
     .search-expandable-left {
@@ -162,6 +163,38 @@
 
     .search-expandable-left.open {
       display: flex;
+    }
+
+    /* Hakutulosten valintalista */
+    .search-results-list {
+      display: none;
+      position: absolute;
+      left: 46px;
+      top: 48px;
+      width: 240px;
+      max-height: 200px;
+      overflow-y: auto;
+      background: rgba(15, 23, 42, 0.98);
+      border: 1.5px solid #0284c7;
+      border-radius: 8px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.8);
+      z-index: 10000;
+    }
+    .search-results-list.open {
+      display: block;
+    }
+    .search-result-item {
+      padding: 8px 10px;
+      font-size: 12px;
+      color: #ffffff;
+      border-bottom: 1px solid #334155;
+      cursor: pointer;
+      white-space: normal;
+      line-height: 1.3;
+    }
+    .search-result-item:hover, .search-result-item:active {
+      background: #0284c7;
+      color: #ffffff;
     }
 
     .map-controls-right {
@@ -372,7 +405,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.10.1</div>
+    <div class="vertical-version-tag">v6.10.3</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -406,6 +439,7 @@
           <input type="text" id="course-search-input" class="search-input" placeholder="Hae kenttää..." onkeydown="if(event.key==='Enter') searchGolfCourse()" />
           <button class="search-btn" onclick="searchGolfCourse()">Hae</button>
         </div>
+        <div class="search-results-list" id="search-results-list"></div>
       </div>
     </div>
 
@@ -445,7 +479,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.10.1";
+    const APP_VERSION = "v6.10.3";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
@@ -1028,47 +1062,41 @@
       box.classList.toggle('open');
       if (box.classList.contains('open')) {
         document.getElementById('course-search-input').focus();
+      } else {
+        closeSearchResults();
       }
     }
 
-    /* KENTÄNHAKU OPENSTREETMAP / OVERPASS API -INTEGRAATION KANSSA (v6.10.1) */
+    function closeSearchResults() {
+      const resultsElem = document.getElementById('search-results-list');
+      if (resultsElem) resultsElem.classList.remove('open');
+    }
+
+    /* KENTÄNHAKU: EI RAJOITETTU MAAHAN EIKÄ LISÄTÄ GOLF-SANAA (v6.10.3) */
     async function searchGolfCourse() {
       const inputElem = document.getElementById('course-search-input');
       const searchQuery = inputElem.value.trim();
       if (!searchQuery) return;
 
+      closeSearchResults();
+
+      // Globaali Nominatim-haku tismalleen hakusanalla
+      const url = `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}&limit=6`;
+
       try {
-        const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.10.1' }
+        const response = await fetch(url, {
+          headers: { 'User-Agent': 'MasterGolfApp/6.10.3' }
         });
         const results = await response.json();
 
         if (results && results.length > 0) {
-          const lat = parseFloat(results[0].lat);
-          const lon = parseFloat(results[0].lon);
-
-          map.flyTo({ center: [lon, lat], zoom: 16.5 });
-          teePosition = [lon, lat];
-          greenPosition = getDestinationPoint(lon, lat, 350, 0);
-          
-          const bearing = getBearing(teePosition, greenPosition);
-          targetPosition = getDestinationPoint(lon, lat, 270, bearing);
-
-          teeMarker.setLngLat(teePosition);
-          greenMarker.setLngLat(greenPosition);
-          targetMarker.setLngLat(targetPosition);
-
-          document.getElementById('search-box').classList.remove('open');
-
-          // Haetaan ja piirretään kentän tiit, greenit ja väylät Overpass API:sta
-          await fetchAndRenderOSMFeatures(lat, lon);
-
-          fetchWeatherData();
-          updateCalculations();
-          triggerElevationUpdate();
-          updateVersionTag();
+          if (results.length === 1) {
+            selectSearchResult(results[0].lat, results[0].lon, results[0].display_name);
+          } else {
+            showSearchResultsList(results);
+          }
         } else {
-          alert("Hakutuloksia ei löytynyt. Kokeile eri hakusanalla.");
+          alert("Hakutuloksia ei löytynyt. Kokeile toista hakusanaa.");
         }
       } catch (err) {
         console.error("Kentän haku epäonnistui:", err);
@@ -1076,14 +1104,59 @@
       }
     }
 
-    /* OVERPASS API -HAITIENTIETOKANTA JA AUTOMAATTINEN 1. VÄYLÄN KOHDISTUS */
+    function showSearchResultsList(results) {
+      const listElem = document.getElementById('search-results-list');
+      listElem.innerHTML = '';
+
+      results.forEach(item => {
+        const div = document.createElement('div');
+        div.className = 'search-result-item';
+        div.innerText = item.display_name;
+        div.onclick = (e) => {
+          triggerButtonGuard(e);
+          selectSearchResult(item.lat, item.lon, item.display_name);
+        };
+        listElem.appendChild(div);
+      });
+
+      listElem.classList.add('open');
+    }
+
+    async function selectSearchResult(latStr, lonStr, displayName) {
+      closeSearchResults();
+      document.getElementById('search-box').classList.remove('open');
+
+      const lat = parseFloat(latStr);
+      const lon = parseFloat(lonStr);
+
+      map.flyTo({ center: [lon, lat], zoom: 16.5 });
+      teePosition = [lon, lat];
+      greenPosition = getDestinationPoint(lon, lat, 350, 0);
+      
+      const bearing = getBearing(teePosition, greenPosition);
+      targetPosition = getDestinationPoint(lon, lat, 270, bearing);
+
+      teeMarker.setLngLat(teePosition);
+      greenMarker.setLngLat(greenPosition);
+      targetMarker.setLngLat(targetPosition);
+
+      // Haetaan ja piirretään Overpass API:sta tiit, greenit ja väylät sekä kohdistetaan 1. tiille
+      await fetchAndRenderOSMFeatures(lat, lon);
+
+      fetchWeatherData();
+      updateCalculations();
+      triggerElevationUpdate();
+      updateVersionTag();
+    }
+
+    /* OVERPASS API - TARKKA 1. VÄYLÄN TIIN JA GREENIN KOHDISTUS */
     async function fetchAndRenderOSMFeatures(lat, lon) {
       const query = `
         [out:json][timeout:25];
         (
-          node["golf"](around:1500,${lat},${lon});
-          way["golf"](around:1500,${lat},${lon});
-          relation["golf"](around:1500,${lat},${lon});
+          node["golf"](around:2000,${lat},${lon});
+          way["golf"](around:2000,${lat},${lon});
+          relation["golf"](around:2000,${lat},${lon});
         );
         out body center;
         >;
@@ -1099,50 +1172,53 @@
         if (data && data.elements) {
           renderGolfFeaturesOnMapLibre(data.elements);
 
-          // Etsitään 1. väylän tii tai greeni automaattisesti
           const nodeMap = new Map();
-          data.elements.forEach(el => { if (el.type === 'node') nodeMap.set(el.id, [el.lon, el.lat]); });
+          data.elements.forEach(el => {
+            if (el.type === 'node') nodeMap.set(el.id, [el.lon, el.lat]);
+          });
 
           let tee1Pos = null;
           let green1Pos = null;
 
-          data.elements.forEach(el => {
-            if (!el.tags || !el.tags.golf) return;
-            const ref = el.tags.ref || el.tags.hole;
+          // Etsitään väylän 1 tii ja greeni
+          for (const el of data.elements) {
+            if (!el.tags || !el.tags.golf) continue;
+            const refVal = String(el.tags.ref || el.tags.hole || el.tags.name || '');
 
-            if (ref === '1') {
-              if (el.tags.golf === 'tee' && !tee1Pos) {
-                if (el.type === 'node') {
-                  tee1Pos = [el.lon, el.lat];
-                } else if (el.type === 'way' && el.nodes) {
-                  const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
-                  if (coords.length > 0) {
-                    const avgLon = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
-                    const avgLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
-                    tee1Pos = [avgLon, avgLat];
-                  }
-                }
-              }
-              if (el.tags.golf === 'green' && !green1Pos) {
-                if (el.type === 'way' && el.nodes) {
-                  const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
-                  if (coords.length > 0) {
-                    const avgLon = coords.reduce((sum, c) => sum + c[0], 0) / coords.length;
-                    const avgLat = coords.reduce((sum, c) => sum + c[1], 0) / coords.length;
-                    green1Pos = [avgLon, avgLat];
-                  }
-                } else if (el.type === 'node') {
-                  green1Pos = [el.lon, el.lat];
+            const isHole1 = refVal === '1' || refVal.includes('1') || refVal.toLowerCase().includes('hole 1');
+
+            if (isHole1 && el.tags.golf === 'tee' && !tee1Pos) {
+              if (el.type === 'node') {
+                tee1Pos = [el.lon, el.lat];
+              } else if (el.type === 'way' && el.nodes) {
+                const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
+                if (coords.length > 0) {
+                  const avgLon = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+                  const avgLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+                  tee1Pos = [avgLon, avgLat];
                 }
               }
             }
-          });
 
-          // Jos 1. tii ja greeni löytyivät, siirretään markkerit ja kartta niiden kohdalle
+            if (isHole1 && el.tags.golf === 'green' && !green1Pos) {
+              if (el.type === 'way' && el.nodes) {
+                const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
+                if (coords.length > 0) {
+                  const avgLon = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+                  const avgLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+                  green1Pos = [avgLon, avgLat];
+                }
+              } else if (el.type === 'node') {
+                green1Pos = [el.lon, el.lat];
+              }
+            }
+          }
+
+          // Jos 1. tii ja greeni löydettiin, lennätetään kartta ja markkerit 1. tiille
           if (tee1Pos && green1Pos) {
             teePosition = tee1Pos;
             greenPosition = green1Pos;
-            
+
             const bearing = getBearing(teePosition, greenPosition);
             const dist = calculateDistance(teePosition, greenPosition);
             targetPosition = getDestinationPoint(teePosition[0], teePosition[1], Math.min(270, dist * 0.7), bearing);
@@ -1151,8 +1227,7 @@
             greenMarker.setLngLat(greenPosition);
             targetMarker.setLngLat(targetPosition);
 
-            // Keskitetään näkymä 1. väylälle
-            map.flyTo({ center: teePosition, zoom: 17 });
+            map.flyTo({ center: teePosition, zoom: 17.2, duration: 1000 });
           }
         }
       } catch (err) {
@@ -1176,7 +1251,6 @@
       elements.forEach(el => {
         if (!el.tags || !el.tags.golf) return;
 
-        // A. VIHERIÖT
         if (el.tags.golf === 'green') {
           if (el.type === 'way' && el.nodes) {
             const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
@@ -1195,7 +1269,6 @@
             });
           }
         } 
-        // B. TIIPAIKAT (Tukee sekä 'node'- että 'way'-tyyppisiä tiibokseja)
         else if (el.tags.golf === 'tee') {
           if (el.type === 'node') {
             tees.push({
@@ -1216,7 +1289,6 @@
             }
           }
         } 
-        // C. VÄYLÄT
         else if (el.tags.golf === 'fairway' && el.type === 'way' && el.nodes) {
           const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
           if (coords.length > 2) {
@@ -1756,6 +1828,8 @@
 
     map.on('click', (e) => {
       if (isInteractingWithUI) return;
+
+      closeSearchResults();
 
       const lngLat = getOffsetLngLatFromPoint(e.point);
       const coords = [lngLat.lng, lngLat.lat];
