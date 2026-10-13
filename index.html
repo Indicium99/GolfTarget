@@ -388,7 +388,6 @@
       position: relative;
     }
 
-    /* MODERNISOITU "x Tee" LAATIKKO TIIPAISKALLE */
     .tee-label-badge {
       position: absolute;
       top: -26px;
@@ -423,7 +422,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.12.0</div>
+    <div class="vertical-version-tag">v6.14.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -497,7 +496,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.12.0";
+    const APP_VERSION = "v6.14.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
@@ -515,7 +514,6 @@
     let elevationTimeout = null;
     let isInteractingWithUI = false;
 
-    // ABSOLUUTTISET KORKEUDET MERENPINNASTA
     let teeElevationMeters = 0;
     let targetElevationMeters = 0;
     let greenElevationMeters = 0;
@@ -815,7 +813,6 @@
       const pxRadius5 = Math.hypot(r5Point.x - pGreen.x, r5Point.y - pGreen.y);
       const pxRadius7 = Math.hypot(r7Point.x - pGreen.x, r7Point.y - pGreen.y);
 
-      // Hajontaympyrä 5%
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, pxRadius5, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(250, 204, 21, 0.15)';
@@ -825,7 +822,6 @@
       ctx.setLineDash([4, 4]);
       ctx.stroke();
 
-      // Hajontaympyrä 7%
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, pxRadius7, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(248, 113, 113, 0.08)';
@@ -837,7 +833,6 @@
 
       ctx.setLineDash([]);
 
-      // CROSSHAIR - VALKOINEN TÄHTÄIN
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, Math.max(4, pxRadius3), 0, 2 * Math.PI);
       ctx.strokeStyle = '#ffffff';
@@ -1106,7 +1101,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.12.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.14.0' }
         });
         const results = await response.json();
 
@@ -1146,8 +1141,7 @@
       const lat = parseFloat(latStr);
       const lon = parseFloat(lonStr);
 
-      // Suoritetaan haku Overpass API:sta 1. väylän tiin ja greenin etsimiseksi
-      await fetchAndLocateHole1(lat, lon);
+      await fetchAndLocateHole1(lat, lon, displayName);
 
       fetchWeatherData();
       updateCalculations();
@@ -1155,14 +1149,18 @@
       updateVersionTag();
     }
 
-    /* OVERPASS API: KOHDISTAA AINA 1. VÄYLÄLLE */
-    async function fetchAndLocateHole1(lat, lon) {
+    /* OVERPASS API: KOHDISTAA MASTER COURSE VÄYLÄLLE 1 */
+    async function fetchAndLocateHole1(lat, lon, displayName = "") {
+      const isMasterGolf = displayName.toLowerCase().includes("master golf") || (Math.abs(lat - 60.2614) < 0.02 && Math.abs(lon - 24.6816) < 0.02);
+
+      // Laajennettu kysely: Hakee väylät (way), joiden ref/hole/description sisältää Master 1-tiedon
       const query = `
         [out:json][timeout:25];
         (
-          node["golf"](around:2500,${lat},${lon});
-          way["golf"](around:2500,${lat},${lon});
-          relation["golf"](around:2500,${lat},${lon});
+          way["golf"="hole"](around:2500,${lat},${lon});
+          node["golf"="tee"](around:2500,${lat},${lon});
+          node["golf"="green"](around:2500,${lat},${lon});
+          way["golf"="green"](around:2500,${lat},${lon});
         );
         out body center;
         >;
@@ -1184,42 +1182,51 @@
           let tee1Pos = null;
           let green1Pos = null;
 
+          // Etsitään väylää ref=1 tai description="Masters Course"
           for (const el of data.elements) {
-            if (!el.tags || !el.tags.golf) continue;
+            if (!el.tags) continue;
+
             const refVal = String(el.tags.ref || el.tags.hole || el.tags.name || '').toLowerCase();
+            const descVal = String(el.tags.description || '').toLowerCase();
 
             const isHole1 = refVal === '1' || refVal === '01' || refVal.includes('1st') || refVal.includes('hole 1') || refVal.includes('tee 1');
+            const isMasterCourse = descVal.includes('master') || descVal.includes('masters') || !descVal;
 
-            if (isHole1 && el.tags.golf === 'tee' && !tee1Pos) {
-              if (el.type === 'node') {
-                tee1Pos = [el.lon, el.lat];
-              } else if (el.type === 'way' && el.nodes) {
-                const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
-                if (coords.length > 0) {
-                  const avgLon = coords.reduce((s, c) => s + c[0], 0) / coords.length;
-                  const avgLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
-                  tee1Pos = [avgLon, avgLat];
+            if (isHole1 && isMasterCourse) {
+              if (el.tags.golf === 'tee' && !tee1Pos) {
+                if (el.type === 'node') tee1Pos = [el.lon, el.lat];
+              }
+
+              if (el.tags.golf === 'green' && !green1Pos) {
+                if (el.type === 'way' && el.nodes) {
+                  const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
+                  if (coords.length > 0) {
+                    const avgLon = coords.reduce((s, c) => s + c[0], 0) / coords.length;
+                    const avgLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
+                    green1Pos = [avgLon, avgLat];
+                  }
+                } else if (el.type === 'node') {
+                  green1Pos = [el.lon, el.lat];
                 }
               }
-            }
 
-            if (isHole1 && el.tags.golf === 'green' && !green1Pos) {
-              if (el.type === 'way' && el.nodes) {
-                const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
-                if (coords.length > 0) {
-                  const avgLon = coords.reduce((s, c) => s + c[0], 0) / coords.length;
-                  const avgLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
-                  green1Pos = [avgLon, avgLat];
-                }
-              } else if (el.type === 'node') {
-                green1Pos = [el.lon, el.lat];
+              // Jos kyseessä on way (kuten Way 1), haetaan sen koordinaatit tiipaikaksi
+              if (el.type === 'way' && el.nodes && !tee1Pos) {
+                const firstNodeCoords = nodeMap.get(el.nodes[0]);
+                const lastNodeCoords = nodeMap.get(el.nodes[el.nodes.length - 1]);
+                if (firstNodeCoords) tee1Pos = firstNodeCoords;
+                if (lastNodeCoords && !green1Pos) green1Pos = lastNodeCoords;
               }
             }
           }
 
-          if (tee1Pos && green1Pos) {
+          if (tee1Pos) {
             teePosition = tee1Pos;
-            greenPosition = green1Pos;
+            if (green1Pos) {
+              greenPosition = green1Pos;
+            } else {
+              greenPosition = getDestinationPoint(tee1Pos[0], tee1Pos[1], 350, 0);
+            }
 
             const bearing = getBearing(teePosition, greenPosition);
             const dist = calculateDistance(teePosition, greenPosition);
@@ -1239,11 +1246,17 @@
         console.warn("Overpass API -haku epäonnistui:", err);
       }
 
-      // Fallback: Siirrytään hakutuloksen koordinaatteihin
-      teePosition = [lon, lat];
-      greenPosition = getDestinationPoint(lon, lat, 350, 0);
+      /* MASTER GOLF ESPOO TARKAT TII 1 & GREEN 1 FALLBACK -KOORDINAATIT */
+      if (isMasterGolf) {
+        teePosition = [24.681644, 60.261447];
+        greenPosition = [24.680158, 60.258729];
+      } else {
+        teePosition = [lon, lat];
+        greenPosition = getDestinationPoint(lon, lat, 350, 0);
+      }
+
       const bearing = getBearing(teePosition, greenPosition);
-      targetPosition = getDestinationPoint(lon, lat, 270, bearing);
+      targetPosition = getDestinationPoint(teePosition[0], teePosition[1], 270, bearing);
 
       updateTeeLabel("1 Tee");
 
@@ -1251,7 +1264,7 @@
       greenMarker.setLngLat(greenPosition);
       targetMarker.setLngLat(targetPosition);
 
-      map.flyTo({ center: teePosition, zoom: 16.5, duration: 1000 });
+      map.flyTo({ center: teePosition, zoom: 17.0, duration: 1000 });
     }
 
     function updateModeButtonsUI() {
