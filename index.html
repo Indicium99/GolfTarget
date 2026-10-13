@@ -412,13 +412,15 @@
       letter-spacing: 0.3px;
     }
 
+    /* NÄKYMÄTÖN KOSKETUSALUE SEKTORIN PÄÄSSÄ VETÄMISTÄ VARTEN */
     .invisible-touch-marker {
-      width: 44px;
-      height: 44px;
+      width: 50px;
+      height: 50px;
       background: transparent;
       cursor: pointer;
       user-select: none;
       touch-action: none;
+      border-radius: 50%;
     }
   </style>
 </head>
@@ -428,7 +430,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.17.0</div>
+    <div class="vertical-version-tag">v6.18.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -502,7 +504,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.17.0";
+    const APP_VERSION = "v6.18.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -537,7 +539,7 @@
     let currentWindGusts = 0;
     let currentTempC = 20;
 
-    let hole1TeeMarker, teeMarker, greenMarker;
+    let hole1TeeMarker, teeMarker, greenMarker, targetTouchMarker;
     let teeWindMarker, greenWindMarker, sectorWindMarker;
 
     const map = new maplibregl.Map({
@@ -618,7 +620,7 @@
         el.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" style="filter: drop-shadow(0px 1.5px 3px rgba(0,0,0,0.7));">
                           <circle cx="12" cy="12" r="4.5" fill="#38bdf8" stroke="#ffffff" stroke-width="1.2"/>
                         </svg>`;
-      } else if (type === 'green') {
+      } else if (type === 'green' || type === 'targetTouch') {
         el.className = 'invisible-touch-marker';
       }
       return el;
@@ -642,6 +644,10 @@
         .setLngLat(greenPosition)
         .addTo(map);
 
+      targetTouchMarker = new maplibregl.Marker({ element: createCustomMarkerElement('targetTouch'), anchor: 'center' })
+        .setLngLat(targetPosition)
+        .addTo(map);
+
       enableModeRestrictedDrag(teeMarker, 'tee', (coords) => {
         teePosition = coords;
         updateCalculations();
@@ -655,6 +661,20 @@
         updateCalculations();
       }, () => {
         fetchWeatherData();
+        triggerElevationUpdate();
+      });
+
+      enableModeRestrictedDrag(targetTouchMarker, 'target', (coords) => {
+        if (!isTargetLocked) {
+          targetPosition = coords;
+        } else {
+          const activeOrigin = userGPSPosition || teePosition;
+          const newBearing = getBearing(activeOrigin, coords);
+          targetPosition = getDestinationPoint(activeOrigin[0], activeOrigin[1], lockedTargetDistance, newBearing);
+          targetTouchMarker.setLngLat(targetPosition);
+        }
+        updateCalculations();
+      }, () => {
         triggerElevationUpdate();
       });
 
@@ -1079,7 +1099,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.17.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.18.0' }
         });
         const results = await response.json();
 
@@ -1144,7 +1164,7 @@
         {
           courseName: 'Master Golf (Forest Course)',
           holeName: '1 Tee',
-          teePos: [24.664150, 60.258820],
+          teePos: [24.664180, 60.258830],
           greenPos: [24.666900, 60.258200]
         }
       ];
@@ -1166,6 +1186,7 @@
 
       teeMarker.setLngLat(teePosition);
       greenMarker.setLngLat(greenPosition);
+      if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
 
       map.flyTo({ center: teePosition, zoom: 17.2, duration: 1000 });
 
@@ -1193,6 +1214,7 @@
 
       teeMarker.setLngLat(teePosition);
       greenMarker.setLngLat(greenPosition);
+      if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
 
       map.flyTo({ center: teePosition, zoom: 17.0, duration: 1000 });
 
@@ -1652,9 +1674,13 @@
       const isPar3 = totalDist < 200;
 
       if (isPar3) {
+        if (targetTouchMarker) targetTouchMarker.remove();
         if (sectorWindMarker) sectorWindMarker.remove();
       } else {
         const currentTargetOrGreen = targetPosition || greenPosition;
+        if (targetTouchMarker && !targetTouchMarker._map) targetTouchMarker.addTo(map);
+        if (targetTouchMarker) targetTouchMarker.setLngLat(currentTargetOrGreen);
+
         renderSectorWindBadge(currentTargetOrGreen, getBearing(activeOrigin, currentTargetOrGreen));
       }
 
@@ -1690,6 +1716,7 @@
           const newBearing = getBearing(activeOrigin, coords);
           targetPosition = getDestinationPoint(activeOrigin[0], activeOrigin[1], lockedTargetDistance, newBearing);
         }
+        if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
       }
       updateCalculations();
       triggerElevationUpdate();
