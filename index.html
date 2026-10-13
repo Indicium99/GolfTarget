@@ -9,8 +9,6 @@
   <meta http-equiv="Pragma" content="no-cache">
   <meta http-equiv="Expires" content="0">
 
-  <!-- Päivitetyt mobile web app -tägit (poistaa vanhentumisvaroituksen) -->
-  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Master Golf">
@@ -19,8 +17,8 @@
   <!-- MapLibre GL CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
-  <!-- Google Maps JavaScript API (Päivitetty loading=async -parametrilla) -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs&loading=async" async defer></script>
+  <!-- Google Maps JavaScript API -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs" async defer></script>
 
   <style>
     html, body {
@@ -367,7 +365,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.6.3</div>
+    <div class="vertical-version-tag">v6.7.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -440,7 +438,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.6.3";
+    const APP_VERSION = "v6.7.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
@@ -581,15 +579,22 @@
         .setLngLat(targetPosition)
         .addTo(map);
 
+      // KORKEUSHAKU HAETAAN VASTA KUN VETÄMINEN LOPPUI (onDragEndCallback)
       enableModeRestrictedDrag(teeMarker, 'tee', (coords) => {
         teePosition = coords;
         updateCalculations();
-      }, () => fetchWeatherData());
+      }, () => {
+        fetchWeatherData();
+        triggerElevationUpdate();
+      });
 
       enableModeRestrictedDrag(greenMarker, 'green', (coords) => {
         greenPosition = coords;
         updateCalculations();
-      }, () => fetchWeatherData());
+      }, () => {
+        fetchWeatherData();
+        triggerElevationUpdate();
+      });
 
       enableModeRestrictedDrag(targetMarker, 'target', (coords) => {
         if (!isTargetLocked) {
@@ -600,7 +605,9 @@
           targetMarker.setLngLat(targetPosition);
         }
         updateCalculations();
-      }, null);
+      }, () => {
+        triggerElevationUpdate();
+      });
 
       map.on('render', () => {
         drawCanvasOverlay();
@@ -621,11 +628,17 @@
 
       updateVersionTag();
       updateCalculations();
+      triggerElevationUpdate();
 
       setTimeout(() => {
         fetchWeatherData();
       }, 500);
     });
+
+    function triggerElevationUpdate() {
+      const activeTargetPos = totalIsPar3() ? greenPosition : (targetPosition || greenPosition);
+      fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
+    }
 
     function enableModeRestrictedDrag(marker, allowedMode, onDragCallback, onDragEndCallback) {
       const el = marker.getElement();
@@ -946,7 +959,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.6.3' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.7.0' }
         });
         const results = await response.json();
 
@@ -969,6 +982,7 @@
 
           fetchWeatherData();
           updateCalculations();
+          triggerElevationUpdate();
         } else {
           alert("Hakutuloksia ei löytynyt. Kokeile eri hakusanalla.");
         }
@@ -1077,6 +1091,7 @@
         teeMarker.setLngLat(teePosition);
         fetchWeatherData();
         updateCalculations();
+        triggerElevationUpdate();
       }
     }
 
@@ -1259,7 +1274,7 @@
         } catch (err) {
           document.getElementById('elevation-diff').innerText = "-";
         }
-      }, 350);
+      }, 200);
     }
 
     function renderElevationUI() {
@@ -1327,12 +1342,30 @@
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
       const gustTailwindComponent = Math.cos(angleRad) * currentWindGusts;
 
-      const windDistanceImpact = includeWind ? Math.round(-tailwindComponent * 0.95) : 0; 
-      const gustDistanceImpact = includeWind ? Math.round(-gustTailwindComponent * 0.95) : 0;
+      // PGA / TRACKMAN AERODYNAMIIKKAMALLIT
+      const distanceRatio = distTee / 200; 
 
+      let windDistanceImpact = 0;
+      let gustDistanceImpact = 0;
+
+      if (includeWind) {
+        if (tailwindComponent < 0) {
+          // Vastatuuli (TrackMan ~1.65 m per m/s 200m kohdalla)
+          windDistanceImpact = Math.round(-tailwindComponent * 1.65 * distanceRatio);
+          gustDistanceImpact = Math.round(-gustTailwindComponent * 1.65 * distanceRatio);
+        } else {
+          // Myötätuuli (TrackMan ~0.90 m per m/s 200m kohdalla)
+          windDistanceImpact = Math.round(-tailwindComponent * 0.90 * distanceRatio);
+          gustDistanceImpact = Math.round(-gustTailwindComponent * 0.90 * distanceRatio);
+        }
+      }
+
+      // LÄMPÖTILA (TrackMan Density Model: ~1% per 5°C muutos eli 0.002 per °C)
       const tempDiff = currentTempC - 20;
-      const tempDistanceImpact = includeTemp ? Math.round(-(tempDiff / 4) * (distTee / 200)) : 0; 
-      const elevationImpact = includeElevation ? Math.round(currentElevationDiffMeters) : 0;
+      const tempDistanceImpact = includeTemp ? Math.round(-(tempDiff * 0.002) * distTee) : 0; 
+
+      // KORKEUSERO (Laskukulmamalli ~1.15x kerroin)
+      const elevationImpact = includeElevation ? Math.round(currentElevationDiffMeters * 1.15) : 0;
 
       const playsLikeDistance = Math.round(distTee + windDistanceImpact + tempDistanceImpact + elevationImpact);
       const playsLikeGustDistance = Math.round(distTee + gustDistanceImpact + tempDistanceImpact + elevationImpact);
@@ -1407,9 +1440,6 @@
 
       drawCanvasOverlay();
       updateBottomPanelMetrics();
-
-      const activeTargetPos = isPar3 ? greenPosition : (targetPosition || greenPosition);
-      fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
     }
 
     function getOffsetLngLatFromPoint(point) {
@@ -1440,6 +1470,7 @@
         if (targetMarker) targetMarker.setLngLat(targetPosition);
       }
       updateCalculations();
+      triggerElevationUpdate();
     });
 
     updateModeButtonsUI();
