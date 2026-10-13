@@ -365,7 +365,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.7.0</div>
+    <div class="vertical-version-tag">v6.7.1</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -438,7 +438,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.7.0";
+    const APP_VERSION = "v6.7.1";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
@@ -579,7 +579,6 @@
         .setLngLat(targetPosition)
         .addTo(map);
 
-      // KORKEUSHAKU HAETAAN VASTA KUN VETÄMINEN LOPPUI (onDragEndCallback)
       enableModeRestrictedDrag(teeMarker, 'tee', (coords) => {
         teePosition = coords;
         updateCalculations();
@@ -628,6 +627,8 @@
 
       updateVersionTag();
       updateCalculations();
+      
+      // HAETAAN KORKEUSTIEDOT VÄLITTÖMÄSTI ALOITUSNÄKYMÄSSÄ
       triggerElevationUpdate();
 
       setTimeout(() => {
@@ -714,6 +715,7 @@
       const pxRadius5 = Math.hypot(r5Point.x - pGreen.x, r5Point.y - pGreen.y);
       const pxRadius7 = Math.hypot(r7Point.x - pGreen.x, r7Point.y - pGreen.y);
 
+      // Hajontaympyrä 5%
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, pxRadius5, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(250, 204, 21, 0.15)';
@@ -723,6 +725,7 @@
       ctx.setLineDash([4, 4]);
       ctx.stroke();
 
+      // Hajontaympyrä 7%
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, pxRadius7, 0, 2 * Math.PI);
       ctx.fillStyle = 'rgba(248, 113, 113, 0.08)';
@@ -734,10 +737,10 @@
 
       ctx.setLineDash([]);
 
-      // CROSSHAIR - 3% SEKTORIN PÄÄSTÄ
+      // CROSSHAIR - VALKOINEN (3% SEKTORIN PÄÄSTÄ)
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, Math.max(4, pxRadius3), 0, 2 * Math.PI);
-      ctx.strokeStyle = '#ef4444';
+      ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.8;
       ctx.stroke();
 
@@ -746,7 +749,7 @@
       ctx.lineTo(pGreen.x + pxRadius3 + 5, pGreen.y);
       ctx.moveTo(pGreen.x, pGreen.y - pxRadius3 - 5);
       ctx.lineTo(pGreen.x, pGreen.y + pxRadius3 + 5);
-      ctx.strokeStyle = '#ef4444';
+      ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 1.5;
       ctx.stroke();
 
@@ -801,6 +804,7 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
+        // KAARIVIIVAT JA SG-TEKSTIT ALKAEN 140 METRISTÄ
         if (distTee >= 140) {
           const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
@@ -823,12 +827,13 @@
             const sgVal = calculateSGValue(d, remToGreen);
             const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
 
-            ctx.font = 'bold 14px Arial';
-            ctx.fillStyle = '#ffffff';
+            // SG LUVUT: ISOIN FONTTI, SIVUSSA VIIVALTA (pSg.y - 12), POSITIIVINEN VIHREÄLLÄ
+            ctx.font = 'bold 15px Arial';
+            ctx.fillStyle = sgVal >= 0 ? '#4ade80' : '#ffffff';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#000000';
             ctx.shadowBlur = 4;
-            ctx.fillText(sgText, pSg.x, pSg.y - 6);
+            ctx.fillText(sgText, pSg.x, pSg.y - 12);
             ctx.shadowBlur = 0;
           }
         }
@@ -959,7 +964,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.7.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.7.1' }
         });
         const results = await response.json();
 
@@ -1207,7 +1212,6 @@
       sectorWindMarker = new maplibregl.Marker({ element: el, anchor: 'center' }).setLngLat(badgePos).addTo(map);
     }
 
-    /* KORKEUSHAKU: GOOGLE ELEVATION SERVICE (SDK) + CACHING + FALLBACK OPEN-METEOON */
     async function getSinglePointElevation(lng, lat) {
       const cacheKey = `elev_${lng.toFixed(5)}_${lat.toFixed(5)}`;
       const cached = localStorage.getItem(cacheKey);
@@ -1216,7 +1220,6 @@
         return parseFloat(cached);
       }
 
-      // GOOGLE MAPS ELEVATION SERVICE (JS SDK)
       if (typeof google !== 'undefined' && google.maps && google.maps.ElevationService) {
         try {
           const elevator = new google.maps.ElevationService();
@@ -1235,7 +1238,6 @@
           const elev = parseFloat(elevationResult);
           localStorage.setItem(cacheKey, elev);
 
-          // Kasvatetaan Google API -laskuria
           googleApiCallCount++;
           localStorage.setItem("google_api_call_count", googleApiCallCount);
           updateVersionTag();
@@ -1246,7 +1248,6 @@
         }
       }
 
-      // VARAJÄRJESTELMÄ / OPEN-METEO
       try {
         const res = await fetch(`https://api.open-meteo.com/v1/elevation?latitude=${lat}&longitude=${lng}`);
         const data = await res.json();
@@ -1342,7 +1343,6 @@
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
       const gustTailwindComponent = Math.cos(angleRad) * currentWindGusts;
 
-      // PGA / TRACKMAN AERODYNAMIIKKAMALLIT
       const distanceRatio = distTee / 200; 
 
       let windDistanceImpact = 0;
@@ -1350,21 +1350,17 @@
 
       if (includeWind) {
         if (tailwindComponent < 0) {
-          // Vastatuuli (TrackMan ~1.65 m per m/s 200m kohdalla)
           windDistanceImpact = Math.round(-tailwindComponent * 1.65 * distanceRatio);
           gustDistanceImpact = Math.round(-gustTailwindComponent * 1.65 * distanceRatio);
         } else {
-          // Myötätuuli (TrackMan ~0.90 m per m/s 200m kohdalla)
           windDistanceImpact = Math.round(-tailwindComponent * 0.90 * distanceRatio);
           gustDistanceImpact = Math.round(-gustTailwindComponent * 0.90 * distanceRatio);
         }
       }
 
-      // LÄMPÖTILA (TrackMan Density Model: ~1% per 5°C muutos eli 0.002 per °C)
       const tempDiff = currentTempC - 20;
       const tempDistanceImpact = includeTemp ? Math.round(-(tempDiff * 0.002) * distTee) : 0; 
 
-      // KORKEUSERO (Laskukulmamalli ~1.15x kerroin)
       const elevationImpact = includeElevation ? Math.round(currentElevationDiffMeters * 1.15) : 0;
 
       const playsLikeDistance = Math.round(distTee + windDistanceImpact + tempDistanceImpact + elevationImpact);
