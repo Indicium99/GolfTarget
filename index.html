@@ -170,8 +170,8 @@
       position: absolute;
       left: 46px;
       top: 48px;
-      width: 250px;
-      max-height: 220px;
+      width: 270px;
+      max-height: 250px;
       overflow-y: auto;
       background: rgba(15, 23, 42, 0.98);
       border: 1.5px solid #0284c7;
@@ -183,8 +183,8 @@
       display: block;
     }
     .search-result-item {
-      padding: 8px 10px;
-      font-size: 12.5px;
+      padding: 10px;
+      font-size: 13px;
       color: #ffffff;
       border-bottom: 1px solid #334155;
       cursor: pointer;
@@ -388,22 +388,45 @@
       position: relative;
     }
 
+    /* UUSI HUOMAAMATON 1. TII -MERKKI */
+    .subtle-tee-marker {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      pointer-events: none;
+      user-select: none;
+    }
+    .subtle-tee-dot {
+      width: 8px;
+      height: 8px;
+      background-color: #22c55e;
+      border: 1.2px solid #ffffff;
+      border-radius: 50%;
+      box-shadow: 0 0 4px rgba(0,0,0,0.6);
+    }
+    .subtle-tee-text {
+      font-size: 10px;
+      font-weight: bold;
+      color: rgba(255, 255, 255, 0.75);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+      letter-spacing: 0.3px;
+    }
+
     .tee-label-badge {
       position: absolute;
-      top: -26px;
+      top: -24px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(15, 23, 42, 0.95);
-      border: 1.5px solid #0284c7;
+      background: rgba(15, 23, 42, 0.85);
+      border: 1px solid #0284c7;
       color: #38bdf8;
-      font-size: 11.5px;
+      font-size: 10px;
       font-weight: bold;
-      padding: 2px 8px;
-      border-radius: 6px;
+      padding: 1px 5px;
+      border-radius: 4px;
       white-space: nowrap;
-      box-shadow: 0 3px 8px rgba(0,0,0,0.8);
+      box-shadow: 0 2px 6px rgba(0,0,0,0.6);
       pointer-events: none;
-      letter-spacing: 0.5px;
     }
     
     .invisible-touch-marker {
@@ -422,7 +445,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.14.0</div>
+    <div class="vertical-version-tag">v6.16.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -496,10 +519,14 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.14.0";
+    const APP_VERSION = "v6.16.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
-    let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
+    // KIINTEÄ 1. TIIPAATIN SIJAINTI
+    let hole1TeePosition = [24.681644, 60.261447];
+
+    // SIIRRETTÄVÄ SEKTORIN ALKUPISTE / LYÖNTIPAOHAN TII
+    let teePosition = [24.681644, 60.261447];   
     let greenPosition = [24.680158, 60.258729]; 
     let targetPosition = null;
     let lockedTargetDistance = 0;
@@ -530,9 +557,9 @@
     let currentWindGusts = 0;
     let currentTempC = 20;
 
-    let currentHoleName = "1 Tee";
+    let currentHoleName = "Tee";
 
-    let teeMarker, greenMarker, targetMarker;
+    let hole1TeeMarker, teeMarker, greenMarker, targetMarker;
     let teeWindMarker, greenWindMarker, sectorWindMarker;
 
     const map = new maplibregl.Map({
@@ -605,12 +632,13 @@
     function createCustomMarkerElement(type) {
       const el = document.createElement('div');
       
-      if (type === 'tee') {
+      if (type === 'hole1Tee') {
+        el.className = 'subtle-tee-marker';
+        el.innerHTML = `<div class="subtle-tee-dot"></div><div class="subtle-tee-text">1 Tee</div>`;
+      } else if (type === 'tee') {
         el.className = 'custom-map-marker';
-        el.innerHTML = `<div class="tee-label-badge" id="tee-label">${currentHoleName}</div>
-                        <svg width="32" height="32" viewBox="0 0 32 32" style="filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));">
-                          <circle cx="16" cy="16" r="6" fill="#ffffff" stroke="#0f172a" stroke-width="1.2"/>
-                          <circle cx="16" cy="16" r="2.5" fill="#22c55e"/>
+        el.innerHTML = `<svg width="24" height="24" viewBox="0 0 24 24" style="filter: drop-shadow(0px 1.5px 3px rgba(0,0,0,0.7));">
+                          <circle cx="12" cy="12" r="4.5" fill="#38bdf8" stroke="#ffffff" stroke-width="1.2"/>
                         </svg>`;
       } else if (type === 'green') {
         el.className = 'invisible-touch-marker';
@@ -626,18 +654,18 @@
       return el;
     }
 
-    function updateTeeLabel(labelText) {
-      currentHoleName = labelText;
-      const labelElem = document.getElementById('tee-label');
-      if (labelElem) labelElem.innerText = currentHoleName;
-    }
-
     const initialBearing = getBearing(teePosition, greenPosition);
     const initialTotalDist = calculateDistance(teePosition, greenPosition);
     const initialTargetDist = Math.min(270, initialTotalDist);
     targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
 
     map.on('load', () => {
+      // KIINTEÄ HUOMAAMATON 1. TII -MERKKI
+      hole1TeeMarker = new maplibregl.Marker({ element: createCustomMarkerElement('hole1Tee'), anchor: 'left' })
+        .setLngLat(hole1TeePosition)
+        .addTo(map);
+
+      // SIIRRETTÄVÄ LYÖNTIPAAN MERKKI
       teeMarker = new maplibregl.Marker({ element: createCustomMarkerElement('tee'), anchor: 'center' })
         .setLngLat(teePosition)
         .addTo(map);
@@ -1101,7 +1129,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.14.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.16.0' }
         });
         const results = await response.json();
 
@@ -1116,11 +1144,32 @@
       }
     }
 
-    function showSearchResultsList(results) {
+    async function showSearchResultsList(results) {
       const listElem = document.getElementById('search-results-list');
       listElem.innerHTML = '';
 
-      results.forEach(item => {
+      for (const item of results) {
+        const lat = parseFloat(item.lat);
+        const lon = parseFloat(item.lon);
+        const isMaster = item.display_name.toLowerCase().includes("master golf") || (Math.abs(lat - 60.2614) < 0.03 && Math.abs(lon - 24.6816) < 0.03);
+
+        if (isMaster) {
+          const masterHoles = await queryOverpassCourses(lat, lon);
+          if (masterHoles && masterHoles.length > 0) {
+            masterHoles.forEach(h => {
+              const div = document.createElement('div');
+              div.className = 'search-result-item';
+              div.innerText = `${h.courseName} - ${h.holeName}`;
+              div.onclick = (e) => {
+                triggerButtonGuard(e);
+                applyHoleData(h);
+              };
+              listElem.appendChild(div);
+            });
+            continue;
+          }
+        }
+
         const div = document.createElement('div');
         div.className = 'search-result-item';
         div.innerText = item.display_name;
@@ -1129,9 +1178,104 @@
           selectSearchResult(item.lat, item.lon, item.display_name);
         };
         listElem.appendChild(div);
-      });
+      }
 
       listElem.classList.add('open');
+    }
+
+    async function queryOverpassCourses(lat, lon) {
+      const query = `
+        [out:json][timeout:25];
+        (
+          way["golf"="hole"](around:2500,${lat},${lon});
+        );
+        out body;
+        >;
+        out skel qt;
+      `;
+      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+
+        if (!data || !data.elements) return [];
+
+        const nodeMap = new Map();
+        data.elements.forEach(el => {
+          if (el.type === 'node') nodeMap.set(el.id, [el.lon, el.lat]);
+        });
+
+        const holes = [];
+
+        data.elements.forEach(el => {
+          if (el.type === 'way' && el.tags && el.nodes && el.nodes.length >= 2) {
+            const refVal = String(el.tags.ref || el.tags.hole || '').toLowerCase();
+            if (refVal === '1' || refVal === '01') {
+              const desc = String(el.tags.description || 'Golf Course');
+              const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
+
+              if (coords.length >= 2) {
+                holes.push({
+                  courseName: desc.includes('Master') ? 'Master Golf (Master Course)' : (desc.includes('Forest') ? 'Master Golf (Forest Course)' : `Master Golf (${desc})`),
+                  holeName: `1 Tee`,
+                  teePos: coords[0],
+                  greenPos: coords[coords.length - 1],
+                  centerPos: coords[1] || null
+                });
+              }
+            }
+          }
+        });
+
+        if (holes.length > 0) return holes;
+
+      } catch (err) {
+        console.warn("Overpass-haku epäonnistui:", err);
+      }
+
+      return [
+        {
+          courseName: 'Master Golf (Master Course)',
+          holeName: '1 Tee',
+          teePos: [24.681644, 60.261447],
+          greenPos: [24.680158, 60.258729]
+        },
+        {
+          courseName: 'Master Golf (Forest Course)',
+          holeName: '1 Tee',
+          teePos: [24.673801, 60.259200],
+          greenPos: [24.671200, 60.256800]
+        }
+      ];
+    }
+
+    function applyHoleData(hole) {
+      closeSearchResults();
+      document.getElementById('search-box').classList.remove('open');
+
+      // TALLENNETAAN KIINTEÄ 1. TIIPAATIN PAICCA
+      hole1TeePosition = hole.teePos;
+      if (hole1TeeMarker) hole1TeeMarker.setLngLat(hole1TeePosition);
+
+      // SEKTORIN ALKUPISTE / LYÖNTIPAA
+      teePosition = hole.teePos;
+      greenPosition = hole.greenPos;
+
+      const bearing = getBearing(teePosition, greenPosition);
+      const dist = calculateDistance(teePosition, greenPosition);
+      targetPosition = hole.centerPos || getDestinationPoint(teePosition[0], teePosition[1], Math.min(270, dist * 0.7), bearing);
+
+      teeMarker.setLngLat(teePosition);
+      greenMarker.setLngLat(greenPosition);
+      targetMarker.setLngLat(targetPosition);
+
+      map.flyTo({ center: teePosition, zoom: 17.2, duration: 1000 });
+
+      fetchWeatherData();
+      updateCalculations();
+      triggerElevationUpdate();
+      updateVersionTag();
     }
 
     async function selectSearchResult(latStr, lonStr, displayName) {
@@ -1141,130 +1285,25 @@
       const lat = parseFloat(latStr);
       const lon = parseFloat(lonStr);
 
-      await fetchAndLocateHole1(lat, lon, displayName);
+      hole1TeePosition = [lon, lat];
+      if (hole1TeeMarker) hole1TeeMarker.setLngLat(hole1TeePosition);
 
-      fetchWeatherData();
-      updateCalculations();
-      triggerElevationUpdate();
-      updateVersionTag();
-    }
-
-    /* OVERPASS API: KOHDISTAA MASTER COURSE VÄYLÄLLE 1 */
-    async function fetchAndLocateHole1(lat, lon, displayName = "") {
-      const isMasterGolf = displayName.toLowerCase().includes("master golf") || (Math.abs(lat - 60.2614) < 0.02 && Math.abs(lon - 24.6816) < 0.02);
-
-      // Laajennettu kysely: Hakee väylät (way), joiden ref/hole/description sisältää Master 1-tiedon
-      const query = `
-        [out:json][timeout:25];
-        (
-          way["golf"="hole"](around:2500,${lat},${lon});
-          node["golf"="tee"](around:2500,${lat},${lon});
-          node["golf"="green"](around:2500,${lat},${lon});
-          way["golf"="green"](around:2500,${lat},${lon});
-        );
-        out body center;
-        >;
-        out skel qt;
-      `;
-
-      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
-      
-      try {
-        const res = await fetch(url);
-        const data = await res.json();
-
-        if (data && data.elements) {
-          const nodeMap = new Map();
-          data.elements.forEach(el => {
-            if (el.type === 'node') nodeMap.set(el.id, [el.lon, el.lat]);
-          });
-
-          let tee1Pos = null;
-          let green1Pos = null;
-
-          // Etsitään väylää ref=1 tai description="Masters Course"
-          for (const el of data.elements) {
-            if (!el.tags) continue;
-
-            const refVal = String(el.tags.ref || el.tags.hole || el.tags.name || '').toLowerCase();
-            const descVal = String(el.tags.description || '').toLowerCase();
-
-            const isHole1 = refVal === '1' || refVal === '01' || refVal.includes('1st') || refVal.includes('hole 1') || refVal.includes('tee 1');
-            const isMasterCourse = descVal.includes('master') || descVal.includes('masters') || !descVal;
-
-            if (isHole1 && isMasterCourse) {
-              if (el.tags.golf === 'tee' && !tee1Pos) {
-                if (el.type === 'node') tee1Pos = [el.lon, el.lat];
-              }
-
-              if (el.tags.golf === 'green' && !green1Pos) {
-                if (el.type === 'way' && el.nodes) {
-                  const coords = el.nodes.map(id => nodeMap.get(id)).filter(Boolean);
-                  if (coords.length > 0) {
-                    const avgLon = coords.reduce((s, c) => s + c[0], 0) / coords.length;
-                    const avgLat = coords.reduce((s, c) => s + c[1], 0) / coords.length;
-                    green1Pos = [avgLon, avgLat];
-                  }
-                } else if (el.type === 'node') {
-                  green1Pos = [el.lon, el.lat];
-                }
-              }
-
-              // Jos kyseessä on way (kuten Way 1), haetaan sen koordinaatit tiipaikaksi
-              if (el.type === 'way' && el.nodes && !tee1Pos) {
-                const firstNodeCoords = nodeMap.get(el.nodes[0]);
-                const lastNodeCoords = nodeMap.get(el.nodes[el.nodes.length - 1]);
-                if (firstNodeCoords) tee1Pos = firstNodeCoords;
-                if (lastNodeCoords && !green1Pos) green1Pos = lastNodeCoords;
-              }
-            }
-          }
-
-          if (tee1Pos) {
-            teePosition = tee1Pos;
-            if (green1Pos) {
-              greenPosition = green1Pos;
-            } else {
-              greenPosition = getDestinationPoint(tee1Pos[0], tee1Pos[1], 350, 0);
-            }
-
-            const bearing = getBearing(teePosition, greenPosition);
-            const dist = calculateDistance(teePosition, greenPosition);
-            targetPosition = getDestinationPoint(teePosition[0], teePosition[1], Math.min(270, dist * 0.7), bearing);
-
-            updateTeeLabel("1 Tee");
-
-            teeMarker.setLngLat(teePosition);
-            greenMarker.setLngLat(greenPosition);
-            targetMarker.setLngLat(targetPosition);
-
-            map.flyTo({ center: teePosition, zoom: 17.2, duration: 1000 });
-            return;
-          }
-        }
-      } catch (err) {
-        console.warn("Overpass API -haku epäonnistui:", err);
-      }
-
-      /* MASTER GOLF ESPOO TARKAT TII 1 & GREEN 1 FALLBACK -KOORDINAATIT */
-      if (isMasterGolf) {
-        teePosition = [24.681644, 60.261447];
-        greenPosition = [24.680158, 60.258729];
-      } else {
-        teePosition = [lon, lat];
-        greenPosition = getDestinationPoint(lon, lat, 350, 0);
-      }
+      teePosition = [lon, lat];
+      greenPosition = getDestinationPoint(lon, lat, 350, 0);
 
       const bearing = getBearing(teePosition, greenPosition);
       targetPosition = getDestinationPoint(teePosition[0], teePosition[1], 270, bearing);
-
-      updateTeeLabel("1 Tee");
 
       teeMarker.setLngLat(teePosition);
       greenMarker.setLngLat(greenPosition);
       targetMarker.setLngLat(targetPosition);
 
       map.flyTo({ center: teePosition, zoom: 17.0, duration: 1000 });
+
+      fetchWeatherData();
+      updateCalculations();
+      triggerElevationUpdate();
+      updateVersionTag();
     }
 
     function updateModeButtonsUI() {
