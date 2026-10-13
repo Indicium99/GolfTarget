@@ -365,7 +365,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.7.1</div>
+    <div class="vertical-version-tag">v6.8.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -438,7 +438,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.7.1";
+    const APP_VERSION = "v6.8.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let teePosition = [24.681644, 60.261447];   // MapLibre [lng, lat]
@@ -455,6 +455,11 @@
     let currentElevationDiffMeters = 0;
     let elevationTimeout = null;
     let isInteractingWithUI = false;
+
+    // ABSOLUUTTISET KORKEUDET MERENPINNASTA
+    let teeElevationMeters = 0;
+    let targetElevationMeters = 0;
+    let greenElevationMeters = 0;
 
     let includeWind = true;
     let includeElevation = true;
@@ -628,7 +633,6 @@
       updateVersionTag();
       updateCalculations();
       
-      // HAETAAN KORKEUSTIEDOT VÄLITTÖMÄSTI ALOITUSNÄKYMÄSSÄ
       triggerElevationUpdate();
 
       setTimeout(() => {
@@ -638,7 +642,7 @@
 
     function triggerElevationUpdate() {
       const activeTargetPos = totalIsPar3() ? greenPosition : (targetPosition || greenPosition);
-      fetchElevationDifferenceDebounced(teePosition, activeTargetPos);
+      fetchElevationDifferenceDebounced(teePosition, activeTargetPos, greenPosition);
     }
 
     function enableModeRestrictedDrag(marker, allowedMode, onDragCallback, onDragEndCallback) {
@@ -737,7 +741,7 @@
 
       ctx.setLineDash([]);
 
-      // CROSSHAIR - VALKOINEN (3% SEKTORIN PÄÄSTÄ)
+      // CROSSHAIR - VALKOINEN TÄHTÄIN (3% SEKTORIN PÄÄSTÄ)
       ctx.beginPath();
       ctx.arc(pGreen.x, pGreen.y, Math.max(4, pxRadius3), 0, 2 * Math.PI);
       ctx.strokeStyle = '#ffffff';
@@ -758,6 +762,27 @@
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
+      // KORKEUSERON TULOSTUS LIPUN YMPÄRILLE (7% KAAREN ULKOPUOLELLE: SEKTORIN PÄÄ VS LIPPU)
+      if (!isPar3 && targetElevationMeters !== undefined && greenElevationMeters !== undefined) {
+        const diffTargetGreen = Math.round(greenElevationMeters - targetElevationMeters);
+        const textTargetGreen = diffTargetGreen > 0 ? `+${diffTargetGreen}m` : `${diffTargetGreen}m`;
+
+        const activeTarget = targetPosition || greenPosition;
+        const targetToGreenBearing = getBearing(activeTarget, greenPosition);
+        
+        // Piste 7% kaaren ulkopuolella katkoviivan linjalla
+        const outerArcDist = (distanceForDispersion * 0.07) + 12;
+        const pLabelTargetGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], outerArcDist, targetToGreenBearing));
+
+        ctx.font = 'bold 15px Arial';
+        ctx.fillStyle = diffTargetGreen > 0 ? '#f87171' : (diffTargetGreen < 0 ? '#4ade80' : '#ffffff');
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(textTargetGreen, pLabelTargetGreen.x, pLabelTargetGreen.y - 4);
+        ctx.shadowBlur = 0;
+      }
+
       if (isPar3) {
         ctx.beginPath();
         ctx.moveTo(pTee.x, pTee.y);
@@ -765,6 +790,20 @@
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        // Par 3 korkeusero Tii vs Lippu
+        const diffTeeGreen = Math.round(greenElevationMeters - teeElevationMeters);
+        const textTeeGreen = diffTeeGreen > 0 ? `+${diffTeeGreen}m` : `${diffTeeGreen}m`;
+        const pLabelTeeGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], (totalDist * 0.07) + 12, getBearing(teePosition, greenPosition)));
+
+        ctx.font = 'bold 15px Arial';
+        ctx.fillStyle = diffTeeGreen > 0 ? '#f87171' : (diffTeeGreen < 0 ? '#4ade80' : '#ffffff');
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(textTeeGreen, pLabelTeeGreen.x, pLabelTeeGreen.y - 4);
+        ctx.shadowBlur = 0;
+
       } else {
         const activeTarget = targetPosition || greenPosition;
         const pTarget = map.project(activeTarget);
@@ -791,6 +830,23 @@
         ctx.strokeStyle = '#ffffff';
         ctx.lineWidth = 2;
         ctx.stroke();
+
+        // KORKEUSERO SEKTORIN PÄÄSSÄ (TII VS SEKTORIN PÄÄ / KOHDE)
+        if (teeElevationMeters !== undefined && targetElevationMeters !== undefined) {
+          const diffTeeTarget = Math.round(targetElevationMeters - teeElevationMeters);
+          const textTeeTarget = diffTeeTarget > 0 ? `+${diffTeeTarget}m` : `${diffTeeTarget}m`;
+
+          // Sijoitetaan teksti sektorin pään/nuolen sivuun (25m sivuun bearing + 90)
+          const pLabelTeeTarget = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 25, bearing + 90));
+
+          ctx.font = 'bold 15px Arial';
+          ctx.fillStyle = diffTeeTarget > 0 ? '#f87171' : (diffTeeTarget < 0 ? '#4ade80' : '#ffffff');
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 4;
+          ctx.fillText(textTeeTarget, pLabelTeeTarget.x, pLabelTeeTarget.y);
+          ctx.shadowBlur = 0;
+        }
 
         drawSectorConeOnCanvas(teePosition, distTee, bearing, 0.2222, false);
         drawSectorConeOnCanvas(teePosition, distTee, bearing, 0.1481, true);
@@ -827,7 +883,6 @@
             const sgVal = calculateSGValue(d, remToGreen);
             const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
 
-            // SG LUVUT: ISOIN FONTTI, SIVUSSA VIIVALTA (pSg.y - 12), POSITIIVINEN VIHREÄLLÄ
             ctx.font = 'bold 15px Arial';
             ctx.fillStyle = sgVal >= 0 ? '#4ade80' : '#ffffff';
             ctx.textAlign = 'center';
@@ -964,7 +1019,7 @@
 
       try {
         const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(searchQuery)}`, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.7.1' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.8.0' }
         });
         const results = await response.json();
 
@@ -1244,7 +1299,7 @@
 
           return elev;
         } catch (status) {
-          console.warn("Google Elevation Service ei käytettävissä tai rajoitettu:", status, "- Siirrytään Open-Meteoon.");
+          console.warn("Google Elevation Service ei käytettävissä:", status, "- Siirrytään Open-Meteoon.");
         }
       }
 
@@ -1263,19 +1318,20 @@
       return 0;
     }
 
-    function fetchElevationDifferenceDebounced(teePos, targetPos) {
+    function fetchElevationDifferenceDebounced(teePos, targetPos, greenPos) {
       clearTimeout(elevationTimeout);
       elevationTimeout = setTimeout(async () => {
         try {
-          const teeElev = await getSinglePointElevation(teePos[0], teePos[1]);
-          const targetElev = await getSinglePointElevation(targetPos[0], targetPos[1]);
+          teeElevationMeters = await getSinglePointElevation(teePos[0], teePos[1]);
+          targetElevationMeters = await getSinglePointElevation(targetPos[0], targetPos[1]);
+          greenElevationMeters = await getSinglePointElevation(greenPos[0], greenPos[1]);
 
-          currentElevationDiffMeters = Math.round((targetElev - teeElev) * 10) / 10;
+          currentElevationDiffMeters = Math.round((targetElevationMeters - teeElevationMeters) * 10) / 10;
           renderElevationUI();
         } catch (err) {
           document.getElementById('elevation-diff').innerText = "-";
         }
-      }, 200);
+      }, 150);
     }
 
     function renderElevationUI() {
@@ -1287,7 +1343,9 @@
       } else {
         diffElem.innerText = "0m";
       }
+      
       updateBottomPanelMetrics();
+      drawCanvasOverlay();
     }
 
     function calculateSGValue(distTeeMeters, distGreenMeters) {
