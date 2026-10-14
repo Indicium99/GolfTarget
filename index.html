@@ -129,11 +129,11 @@
       padding-top: 3px;
     }
 
-    /* TUULI-ELEMENTTI: ENEMMÄN OIKEALLE, ILMAN TAUSTA-LAATIKKOA, ARVOT LOGON ALAPUOLELLA */
+    /* TUULI-BADGE SIIRRETTY YLÄPALKIN ALAPUOLELLE OIKEALLE, ILMAN LAATIKKOA */
     .fixed-wind-badge {
       position: absolute;
-      top: 18px;
-      right: 65px;
+      top: 65px;
+      right: 15px;
       z-index: 9999;
       display: flex;
       flex-direction: column;
@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.24.0</div>
+    <div class="vertical-version-tag">v6.25.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -451,7 +451,7 @@
       </div>
     </div>
 
-    <!-- TUULI-BADGE OIKEALLE ILMAN TAUSTA-LAATIKKOA (ARVOT LOGON ALAPUOLELLA) -->
+    <!-- TUULI-BADGE SIIRRETTY YLÄPALKIN ALAPUOLELLE OIKEALLE -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
       <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
@@ -525,7 +525,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.24.0";
+    const APP_VERSION = "v6.25.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -647,7 +647,6 @@
       return el;
     }
 
-    // AUTOMAATTINEN SEKTORIN SIJOITUS VÄYLÄN KESKILINJALLE
     function autoPositionTarget() {
       const activeOrigin = userGPSPosition || teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
@@ -902,11 +901,11 @@
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
-      // LIPUN LÄHESTYMISNUOLI (50M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI)
+      // LIPUN LÄHESTYMISNUOLI (20M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI ±4°)
       const targetToGreenBearing = getBearing(activeTarget, greenPosition);
-      const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 50, targetToGreenBearing));
-      const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 45, targetToGreenBearing + 4));
-      const pGreenRightTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 45, targetToGreenBearing - 4));
+      const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
+      const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing + 4));
+      const pGreenRightTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing - 4));
 
       ctx.beginPath();
       ctx.moveTo(pGreen.x, pGreen.y);
@@ -959,7 +958,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLI TÄSMÄLLEEN SAMALLA SPEKSILLÄ KUIN LIPUN NUOLI (50m runko, 5m kärki ±4°)
+        // SEKTORIN NUOLI (50m runko, 5m kärki ±4°)
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
@@ -994,21 +993,19 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // SEKTORIN PITUUSMITTA JA PL-ARVO ALEMMAKSI & ISOMMALLA FONTTIKOLLA (bold 22px Arial)
-        const pTextPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 2, bearing + 15));
+        // LUKITUT LUKUARVOT CANVAS-RUUTUKOORDINAATEISSA (SIVUSIIRTYMÄ 22px OIKEALLE P_TARGETISTA)
+        const currentZoom = map.getZoom();
+        const isZoomedIn = currentZoom > 17.0;
+
         ctx.font = 'bold 22px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 6;
-        ctx.fillText(`${distTee}m`, pTextPos.x + 12, pTextPos.y);
-
-        const currentZoom = map.getZoom();
-        const isZoomedIn = currentZoom > 17.0;
+        ctx.fillText(`${distTee}m`, pTarget.x + 22, pTarget.y + 6);
 
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
-          const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 5, bearing + 15));
           
           let textColor = '#ffffff';
           if (playsLikeDist > distTee) textColor = '#dc2626';     // Longer
@@ -1019,7 +1016,7 @@
           ctx.textAlign = 'left';
           ctx.shadowColor = '#000000';
           ctx.shadowBlur = 6;
-          ctx.fillText(`PL ${playsLikeDist}m`, pPlaysLikePos.x + 12, pPlaysLikePos.y + 16);
+          ctx.fillText(`PL ${playsLikeDist}m`, pTarget.x + 22, pTarget.y + 30);
         }
         ctx.shadowBlur = 0;
 
@@ -1200,7 +1197,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.24.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.25.0' }
         });
         const results = await response.json();
 
@@ -1251,7 +1248,6 @@
       listElem.classList.add('open');
     }
 
-    // DYNAAMINEN OVERPASS API -HAKU (OPENSTREETMAP) ILMAN STAATTISIA KOORDINAATTEJA
     async function queryOverpassCourses(lat, lon) {
       const query = `
         [out:json][timeout:15];
@@ -1791,7 +1787,7 @@
       }
 
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
+      document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
     function updateCalculations() {
@@ -1843,13 +1839,4 @@
           const newBearing = getBearing(activeOrigin, coords);
           targetPosition = getDestinationPoint(activeOrigin[0], activeOrigin[1], lockedTargetDistance, newBearing);
         }
-        if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
-      }
-      updateCalculations();
-      triggerElevationUpdate();
-    });
-
-    updateModeButtonsUI();
-  </script>
-</body>
-</html>
+        if (targetTouchMarker)
