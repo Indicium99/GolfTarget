@@ -439,7 +439,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.29.0</div>
+    <div class="vertical-version-tag">v6.30.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.29.0";
+    const APP_VERSION = "v6.30.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -918,7 +918,7 @@
       ctx.fillText(`${meters7}m`, pGreen.x, pGreen.y - pxRadius7 - 2);
       ctx.shadowBlur = 0;
 
-      // LIPUN LÄHESTYMISNUOLI (20M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI ±4°)
+      // LIPUN LÄHESTYMISNUOLI (20M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI ±4° - TÄYSIN IDENTTINEN SEKTORIN NUOLEN KANSSA)
       const targetToGreenBearing = getBearing(activeTarget, greenPosition);
       const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
       const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing + 4));
@@ -976,10 +976,10 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLI (50m runko, TERÄVÄ 5m kärki ±4° - IDENTTINEN LIPUN NUOLEN KANSSA)
-        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
-        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
-        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
+        // SEKTORIN NUOLI (20m runko, TERÄVÄ 5m kärki ±4° - IDENTTINEN LIPUN NUOLEN KANSSA)
+        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 20, bearing));
+        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 15, bearing + 4));
+        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 15, bearing - 4));
 
         ctx.beginPath();
         ctx.moveTo(pTarget.x, pTarget.y);
@@ -1049,7 +1049,6 @@
             plString += ` (${playsLikeGustDist}m ${gustSpeedInt}m/s)`;
           }
 
-          // PL YLEMPÄNÄ (MUOTOILU: PL 210m (218m 7m/s))
           ctx.font = 'bold 20px Arial';
           ctx.fillStyle = textColor;
           ctx.textAlign = 'left';
@@ -1064,50 +1063,50 @@
 
         ctx.shadowBlur = 0;
 
-        // SG-LUVUT KAARILLA 5% JA 7%: NÄYTÄ MOLEMMISSA RAFFI (BUNKKERI)
-        const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
-        const quarterLeftAngle = bearing - (deltaAngle / 2);
-
-        const formatSgPairHTML = (distStart, remGreen) => {
-          if (!distStart || !remGreen) return "0.0 (0.0)";
+        // SG-LUVUT KAARILLA 5% JA 7% KELLO 04:30 KOHDALLA (135 DEGREES BEARING)
+        // FORMAT: SG_viheriö (SG_raffi / SG_bunkkeri)
+        const formatSgTrioHTML = (distStart, remGreen) => {
+          if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true };
           const yardsStart = distStart * 1.09361;
           const yardsRem = remGreen * 1.09361;
 
           const expStart = 0.82 + 0.0084 * yardsStart;
+          const expRemGreen = 0.82 + 0.0084 * yardsRem;
           const expRemRough = 1.15 + 0.0092 * yardsRem; 
           const expRemSand = 1.45 + 0.0098 * yardsRem;
 
+          const sgGreen = expStart - (expRemGreen + 1);
           const sgRough = expStart - (expRemRough + 1);
           const sgSand = expStart - (expRemSand + 1);
 
           const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
           return {
-            text: `${fmt(sgRough)} (${fmt(sgSand)})`,
-            isPositive: sgRough >= 0
+            text: `${fmt(sgGreen)} (${fmt(sgRough)} / ${fmt(sgSand)})`,
+            isPositive: sgGreen >= 0
           };
         };
 
-        // 5% KAARI
-        const target5Point = getDestinationPoint(greenPosition[0], greenPosition[1], meters5, 180 + targetToGreenBearing);
-        const sgPair5 = formatSgPairHTML(distTee, meters5);
-        const pSg5 = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], calculateDistance(activeOrigin, target5Point), quarterLeftAngle));
+        // 5% KAARI (KELLO 04:30 = bearing + 135)
+        const point5At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters5, targetToGreenBearing + 135);
+        const pSg5 = map.project(point5At0430);
+        const sgTrio5 = formatSgTrioHTML(distTee, meters5);
         
         ctx.font = 'bold 13px Arial';
-        ctx.fillStyle = sgPair5.isPositive ? '#4ade80' : '#ffffff';
+        ctx.fillStyle = sgTrio5.isPositive ? '#4ade80' : '#ffffff';
         ctx.textAlign = 'center';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 4;
-        ctx.fillText(sgPair5.text, pSg5.x, pSg5.y - 4);
+        ctx.fillText(sgTrio5.text, pSg5.x, pSg5.y);
 
-        // 7% KAARI
-        const target7Point = getDestinationPoint(greenPosition[0], greenPosition[1], meters7, 180 + targetToGreenBearing);
-        const sgPair7 = formatSgPairHTML(distTee, meters7);
-        const pSg7 = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], calculateDistance(activeOrigin, target7Point), quarterLeftAngle));
+        // 7% KAARI (KELLO 04:30 = bearing + 135)
+        const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7, targetToGreenBearing + 135);
+        const pSg7 = map.project(point7At0430);
+        const sgTrio7 = formatSgTrioHTML(distTee, meters7);
 
         ctx.font = 'bold 13px Arial';
-        ctx.fillStyle = sgPair7.isPositive ? '#4ade80' : '#ffffff';
+        ctx.fillStyle = sgTrio7.isPositive ? '#4ade80' : '#ffffff';
         ctx.textAlign = 'center';
-        ctx.fillText(sgPair7.text, pSg7.x, pSg7.y - 4);
+        ctx.fillText(sgTrio7.text, pSg7.x, pSg7.y);
 
         ctx.shadowBlur = 0;
 
@@ -1120,6 +1119,7 @@
         }
 
         const step = isZoomedIn ? 10 : 20;
+        const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
         // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT
         if (distTee >= 140) {
@@ -1272,7 +1272,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.29.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.30.0' }
         });
         const results = await response.json();
 
@@ -1706,17 +1706,6 @@
       
       updateBottomPanelMetrics();
       drawCanvasOverlay();
-    }
-
-    function calculateSGValue(distTeeMeters, distGreenMeters) {
-      if (!distTeeMeters || !distGreenMeters) return 0;
-      const yardsStart = distTeeMeters * 1.09361;
-      const yardsRem = distGreenMeters * 1.09361;
-
-      const expStart = 0.82 + 0.0084 * yardsStart;
-      const expRemFairway = 0.82 + 0.0084 * yardsRem;
-
-      return expStart - (expRemFairway + 1);
     }
 
     function renderStrokesGainedHTML(distTeeMeters, distGreenMeters) {
