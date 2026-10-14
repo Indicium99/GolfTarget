@@ -129,17 +129,21 @@
       padding-top: 3px;
     }
 
-    /* KEVYT KEHYKSETÖN TUULI-ELEMENTTI YLÄPALKIN ALAPUOLELLE */
+    /* KEVYT TUULI-ELEMENTTI SIIRRETTY KESKELLE YLÄPALKIN ALAPUOLELLE */
     .fixed-wind-badge {
       position: absolute;
       top: 105px;
-      right: 12px;
+      left: 50%;
+      transform: translateX(-50%);
       z-index: 9999;
       display: flex;
       align-items: center;
       gap: 6px;
       pointer-events: none;
       user-select: none;
+      background: rgba(15, 23, 42, 0.7);
+      padding: 2px 8px;
+      border-radius: 20px;
     }
 
     .map-controls-left-group {
@@ -436,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.22.0</div>
+    <div class="vertical-version-tag">v6.23.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -447,15 +451,14 @@
       </div>
     </div>
 
-    <!-- SIIRRETTY JA KEVENNETTY TUULI-BADGE YLÄPALKIN ALAPUOLELLA -->
+    <!-- TUULI-BADGE KESKELLÄ YLÄPALKIN ALAPUOLELLA -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
-      <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="36" height="36" viewBox="0 0 40 40">
+      <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
         <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
       </svg>
-      <div style="font-size: 14px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.2;">
-        💨 <span id="fixed-wind-speed">-</span> m/s<br>
-        <span id="fixed-wind-gusts" style="color:#facc15; font-size:12px;">(- m/s)</span>
+      <div style="font-size: 13.5px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.1;">
+        💨 <span id="fixed-wind-speed">-</span> m/s <span id="fixed-wind-gusts" style="color:#facc15; font-size:11.5px;">(- m/s)</span>
       </div>
     </div>
 
@@ -522,7 +525,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.22.0";
+    const APP_VERSION = "v6.23.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -723,6 +726,7 @@
       }, 500);
     });
 
+    /* REILUMPI YLÄPEHMUSTE (140px), JOTTA LIPPU EI JÄÄ YLÄPALKIN ALLE */
     function setHoleDefaultView(e) {
       if (e) triggerButtonGuard(e);
       const activeOrigin = userGPSPosition || teePosition;
@@ -733,7 +737,7 @@
       bounds.extend(greenPosition);
 
       map.fitBounds(bounds, {
-        padding: { top: 80, bottom: 180, left: 50, right: 50 },
+        padding: { top: 140, bottom: 180, left: 50, right: 50 },
         bearing: bearing,
         duration: 800
       });
@@ -947,7 +951,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLEN KÄRKI MUOTOILTU täsmälleen SAMAKSI KUIN LIPUN NUOLI
+        // SEKTORIN NUOLEN KÄRKI MUOTOILTU TERÄVÄKSI (täsmälleen sama kuin lipulla)
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
@@ -982,7 +986,7 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // SEKTORIN PITUUSMITTA SIIRRETTY 2M YLÖS JA 8M OIKEALLE (SUUNNAUS BEARING + 15)
+        // SEKTORIN PITUUSMITTA (SUUNNASSA BEARING + 15)
         const pTextPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 2, bearing + 15));
         ctx.font = 'bold 18px Arial';
         ctx.fillStyle = '#ffffff';
@@ -1004,7 +1008,7 @@
         const isZoomedIn = currentZoom > 17.0;
         const step = isZoomedIn ? 10 : 20;
 
-        // PLAYS LIKE ARVO SAMALLE 8M LINJALLE OIKEALLE (10M PÄÄHÄN SEKTORIN PÄÄSTÄ)
+        // PLAYS LIKE ARVO SUORAAN SEKTORIN PITUUSMITAN YLÄPUOLELLE (SAMALLE SIVU-LINJALLE BEARING + 15)
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
           const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing + 15));
@@ -1189,7 +1193,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.22.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.23.0' }
         });
         const results = await response.json();
 
