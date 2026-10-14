@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.38.0</div>
+    <div class="vertical-version-tag">v6.39.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.38.0";
+    const APP_VERSION = "v6.39.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -683,7 +683,6 @@
         triggerElevationUpdate();
       });
 
-      // LIPUN SIIRTO: EI KUTSU autoPositionTarget()-FUNKTIOTA, JOTTA SEKTORI SÄILYTTÄÄ ASETETUN PAIKKANSA
       enableModeRestrictedDrag(greenMarker, 'green', (coords) => {
         greenPosition = coords;
         updateCalculations();
@@ -980,7 +979,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLI (50M RUNKO, KÄRKI TASAN 5M VÄLILLÄ 45M->50M, KULMA ±1.6 DEG = TÄYSIN IDENTTINEN TERÄVYYS)
+        // SEKTORIN NUOLI
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 1.6));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 1.6));
@@ -1016,13 +1015,15 @@
         ctx.setLineDash([]);
 
         // 1. TIILTÄ SUORITETTAVAN AVAUSLYÖNNIN SG-LASKENTAFUNKTIO (SEKTORIN SISÄLLE)
-        // KORJATTU: shotDist on avausmatka tiiltä, jolloin koko aloitusetäisyys = shotDist + remGreen
+        // KORJATTU v6.39.0: Käytetään erillistä avauksen odotusarvofunktiota E_tee
         const calculateTeeTeeSgSingle = (shotDist, remGreen) => {
           if (!shotDist || !remGreen) return { text: "+0.0", val: 0 };
           const yardsStartTee = (shotDist + remGreen) * 1.09361;
           const yardsRem = remGreen * 1.09361;
 
-          const expStartTee = 0.82 + 0.0084 * yardsStartTee;
+          // Tiiltä suoritetun aloituksen odotusarvo (Tee Off)
+          const expStartTee = 1.15 + 0.0090 * yardsStartTee;
+          // Väyläosuman odotusarvo jäljellä olevalle matkalle viheriölle
           const expRemFairway = 0.82 + 0.0084 * yardsRem;
 
           const sgTeeDrive = expStartTee - (expRemFairway + 1);
@@ -1056,7 +1057,7 @@
           };
         };
 
-        // LIPUN HAJONTAYMPYRÄN 7% SG-TRIOLI (SIIRRETTY ALKAMAAN 7% YMPYRÄN REUNASTA ULOSPÄIN @ 135 DEG)
+        // LIPUN HAJONTAYMPYRÄN 7% SG-TRIOLI
         const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7 + 1.5, targetToGreenBearing + 135);
         const pSg7 = map.project(point7At0430);
         const sgTrio7 = formatApproachSgTrioHTML(distTee, meters7);
@@ -1126,29 +1127,26 @@
           ctx.fillText(plValueStr, currentX, pTextPos.y - 10);
           currentX += ctx.measureText(plValueStr).width;
 
-          // 3. Tuulipurskeosio: " (" + purske-m + " Xm/s)"
+          // 3. Tuulipurskeosio
           if (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) {
             const openParen = " (";
             const gustValStr = `${playsLikeGustDist}m`;
             const gustSpeedStr = ` ${gustSpeedInt}m/s)`;
 
-            // "("
             ctx.fillStyle = '#ffffff';
             ctx.fillText(openParen, currentX, pTextPos.y - 10);
             currentX += ctx.measureText(openParen).width;
 
-            // Purske-m -> Punainen/Vihreä/Valkoinen
             ctx.fillStyle = gustPlColor;
             ctx.fillText(gustValStr, currentX, pTextPos.y - 10);
             currentX += ctx.measureText(gustValStr).width;
 
-            // " Xm/s)" -> Valkoinen
             ctx.fillStyle = '#ffffff';
             ctx.fillText(gustSpeedStr, currentX, pTextPos.y - 10);
           }
         }
 
-        // PERUSMATKA SEN ALAPUOLELLA (10M / 2M OIKEALLE)
+        // PERUSMATKA SEN ALAPUOLELLA
         ctx.font = 'bold 20px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
@@ -1156,7 +1154,7 @@
 
         ctx.shadowBlur = 0;
 
-        // KORKEUSERON BADGE (📐) 20M SEKTORIN PÄÄSTÄ NUOLEN SUUNTAAN
+        // KORKEUSERON BADGE (📐)
         if (teeElevationMeters !== undefined && targetElevationMeters !== undefined) {
           const diffTeeTarget = Math.round(targetElevationMeters - teeElevationMeters);
           const pElevationPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 20, bearing));
@@ -1182,7 +1180,7 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Vasen puoli: Sektorin keskilinjan ja vasemman reunan puoliväli -> VAIN YKSI TIILTÄ LYÖTY SG-ARVO
+            // Vasen puoli -> TIILTÄ LYÖTY AVAUKSEN SG-ARVO
             const quarterLeftAngle = bearing - (deltaAngle / 2);
             const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
 
@@ -1196,7 +1194,7 @@
             ctx.shadowBlur = 4;
             ctx.fillText(sgSingle.text, pSgSinglePos.x, pSgSinglePos.y - 4);
 
-            // Oikea puoli: Sektorin keskilinjan ja oikean reunan puoliväli -> KAAREN ETÄISYYSMITTA
+            // Oikea puoli -> KAAREN ETÄISYYSMITTA
             const quarterRightAngle = bearing + (deltaAngle / 2);
             const pArcDist = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterRightAngle));
 
@@ -1332,7 +1330,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.38.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.39.0' }
         });
         const results = await response.json();
 
@@ -1953,7 +1951,6 @@
       } else if (currentMode === 'green') {
         greenPosition = coords;
         greenMarker.setLngLat(coords);
-        // LIPUN KLIKKAUS: EI KUTSU autoPositionTarget()-FUNKTIOTA, JOTTA SEKTORI SÄILYTTÄÄ ASETETUN PAIKKANSA
         updateFixedWindBadge();
       } else if (currentMode === 'target') {
         if (!isTargetLocked) {
