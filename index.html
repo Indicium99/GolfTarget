@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.36.0</div>
+    <div class="vertical-version-tag">v6.37.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.36.0";
+    const APP_VERSION = "v6.37.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -1015,24 +1015,25 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // SG-LASKENTAFUNKTIO
-        const calculateFairwaySgSingle = (distStart, remGreen) => {
-          if (!distStart || !remGreen) return { text: "+0.0", val: 0 };
-          const yardsStart = distStart * 1.09361;
+        // 1. TIILTÄ SUORITETTAVAN AVAUSLYÖNNIN SG-LASKENTAFUNKTIO (SEKTORIN SISÄLLE)
+        const calculateTeeTeeSgSingle = (shotDist, remGreen) => {
+          if (!shotDist || !remGreen) return { text: "+0.0", val: 0 };
+          const yardsTee = totalDist * 1.09361;
           const yardsRem = remGreen * 1.09361;
 
-          const expStart = 0.82 + 0.0084 * yardsStart;
-          const expRemGreen = 0.82 + 0.0084 * yardsRem;
+          const expStartTee = 0.82 + 0.0084 * yardsTee;
+          const expRemFairway = 0.82 + 0.0084 * yardsRem;
 
-          const sgGreen = expStart - (expRemGreen + 1);
+          const sgTeeDrive = expStartTee - (expRemFairway + 1);
           const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
           return {
-            text: fmt(sgGreen),
-            val: sgGreen
+            text: fmt(sgTeeDrive),
+            val: sgTeeDrive
           };
         };
 
-        const formatSgTrioHTML = (distStart, remGreen) => {
+        // 2. LÄHESTYMISLYÖNNIN SG-LASKENTAFUNKTIO (LIPUN HAJONTAYMPYRÄLLE)
+        const formatApproachSgTrioHTML = (distStart, remGreen) => {
           if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true, rawGreen: 0 };
           const yardsStart = distStart * 1.09361;
           const yardsRem = remGreen * 1.09361;
@@ -1057,7 +1058,7 @@
         // LIPUN HAJONTAYMPYRÄN 7% SG-TRIOLI (SIIRRETTY ALKAMAAN 7% YMPYRÄN REUNASTA ULOSPÄIN @ 135 DEG)
         const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7 + 1.5, targetToGreenBearing + 135);
         const pSg7 = map.project(point7At0430);
-        const sgTrio7 = formatSgTrioHTML(distTee, meters7);
+        const sgTrio7 = formatApproachSgTrioHTML(distTee, meters7);
 
         ctx.font = 'bold 13px Arial';
         ctx.fillStyle = sgTrio7.isPositive ? '#4ade80' : '#f87171';
@@ -1081,10 +1082,10 @@
 
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
-          
-          let impactColor = '#ffffff';
-          if (playsLikeDist > distTee) impactColor = '#dc2626';     // Punainen (vastatuuli/pidempi)
-          else if (playsLikeDist < distTee) impactColor = '#16a34a'; // Vihreä (myötätuuli/lyhyempi)
+
+          let mainPlColor = '#ffffff';
+          if (playsLikeDist > distTee) mainPlColor = '#dc2626';     // Punainen (pidempi)
+          else if (playsLikeDist < distTee) mainPlColor = '#16a34a'; // Vihreä (lyhyempi)
 
           const angleRad = (currentWindDirection + 180 - bearing) * Math.PI / 180;
           const gustTailwind = Math.cos(angleRad) * currentWindGusts;
@@ -1099,24 +1100,50 @@
           const elevImpact = includeElevation ? Math.round(currentElevationDiffMeters * 1.15) : 0;
           const playsLikeGustDist = Math.round(distTee + gustDistanceImpact + tempImpact + elevImpact);
 
+          let gustPlColor = '#ffffff';
+          if (playsLikeGustDist > distTee) gustPlColor = '#dc2626';     // Punainen (pidempi)
+          else if (playsLikeGustDist < distTee) gustPlColor = '#16a34a'; // Vihreä (lyhyempi)
+
           const windSpeedInt = Math.round(currentWindSpeed);
           const gustSpeedInt = Math.round(currentWindGusts);
 
-          let plMainPart = `PL ${playsLikeDist}m`;
-          let gustPart = (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) ? ` (${playsLikeGustDist}m ${gustSpeedInt}m/s)` : '';
+          const plPrefix = "PL ";
+          const plValueStr = `${playsLikeDist}m`;
 
           ctx.font = 'bold 18px Arial';
           ctx.textAlign = 'left';
 
-          // PL valkoisella
-          ctx.fillStyle = '#ffffff';
-          ctx.fillText(plMainPart, pTextPos.x, pTextPos.y - 10);
+          let currentX = pTextPos.x;
 
-          // Tuulivaikutus/puuska punainen/vihreä/valkoinen logiikan mukaan
-          if (gustPart) {
-            const mainWidth = ctx.measureText(plMainPart).width;
-            ctx.fillStyle = impactColor;
-            ctx.fillText(gustPart, pTextPos.x + mainWidth, pTextPos.y - 10);
+          // 1. "PL " -> Valkoinen
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(plPrefix, currentX, pTextPos.y - 10);
+          currentX += ctx.measureText(plPrefix).width;
+
+          // 2. PL-metriarvo -> Punainen/Vihreä/Valkoinen
+          ctx.fillStyle = mainPlColor;
+          ctx.fillText(plValueStr, currentX, pTextPos.y - 10);
+          currentX += ctx.measureText(plValueStr).width;
+
+          // 3. Tuulipurskeosio: " (" + purske-m + " Xm/s)"
+          if (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) {
+            const openParen = " (";
+            const gustValStr = `${playsLikeGustDist}m`;
+            const gustSpeedStr = ` ${gustSpeedInt}m/s)`;
+
+            // "("
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(openParen, currentX, pTextPos.y - 10);
+            currentX += ctx.measureText(openParen).width;
+
+            // Purske-m -> Punainen/Vihreä/Valkoinen
+            ctx.fillStyle = gustPlColor;
+            ctx.fillText(gustValStr, currentX, pTextPos.y - 10);
+            currentX += ctx.measureText(gustValStr).width;
+
+            // " Xm/s)" -> Valkoinen
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(gustSpeedStr, currentX, pTextPos.y - 10);
           }
         }
 
@@ -1154,12 +1181,12 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Vasen puoli: Sektorin keskilinjan ja vasemman reunan puoliväli -> VAIN YKSI SG-ARVO
+            // Vasen puoli: Sektorin keskilinjan ja vasemman reunan puoliväli -> VAIN YKSI TIILTÄ LYÖTY SG-ARVO
             const quarterLeftAngle = bearing - (deltaAngle / 2);
             const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
 
-            const remainingToGreen = Math.max(0, distTee - d);
-            const sgSingle = calculateFairwaySgSingle(d, remainingToGreen);
+            const remainingToGreen = Math.max(0, totalDist - d);
+            const sgSingle = calculateTeeTeeSgSingle(d, remainingToGreen);
 
             ctx.font = 'bold 12px Arial';
             ctx.fillStyle = sgSingle.val >= 0 ? '#4ade80' : '#f87171';
@@ -1265,6 +1292,7 @@
         document.getElementById('temp-toggle').className = `toggleable-factor ${includeTemp ? 'active' : 'inactive'}`;
       }
       updateBottomPanelMetrics();
+      drawCanvasOverlay();
     }
 
     function triggerButtonGuard(e) {
@@ -1303,7 +1331,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.36.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.37.0' }
         });
         const results = await response.json();
 
