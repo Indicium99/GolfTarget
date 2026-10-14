@@ -711,7 +711,7 @@
       }, 500);
     });
 
-    // 1. OLETUSNÄKYMÄ (TII ALHAALLA KESKELLÄ, LIPPU YLHÄÄLLÄ)
+    // OLETUSNÄKYMÄ (TII ALHAALLA KESKELLÄ, LIPPU YLHÄÄLLÄ)
     function setHoleDefaultView(e) {
       if (e) triggerButtonGuard(e);
       const activeOrigin = userGPSPosition || teePosition;
@@ -734,7 +734,7 @@
       
       const dist = calculateDistance(activeOrigin, activeTargetPos);
       if (dist > 1000) {
-        return; // Ei haeta korkeuksia jos kentän ulkopuolella / yli 1000m
+        return; // Ei haeta korkeutta yli 1000m etäisyydellä
       }
 
       fetchElevationDifferenceDebounced(activeOrigin, activeTargetPos, greenPosition);
@@ -906,6 +906,7 @@
         const distTee = calculateDistance(activeOrigin, activeTarget);
         const bearing = getBearing(activeOrigin, activeTarget);
 
+        // 1. SEKTORIN RUNKOVIIVA (TII -> KOHDE)
         ctx.beginPath();
         ctx.moveTo(pTee.x, pTee.y);
         ctx.lineTo(pTarget.x, pTarget.y);
@@ -913,10 +914,10 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // 3. NUOLTA JATKETAAN HAJONTAYMPYRÄN / KOHTEEN TAAKSE 20M
-        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 70, bearing));
-        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 62, bearing + 4));
-        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 62, bearing - 4));
+        // 50M NUOLI JA TERÄVÄ 5M NUOLENKÄRKI SEKTORIN PÄÄSSÄ
+        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
+        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
+        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
 
         ctx.beginPath();
         ctx.moveTo(pTarget.x, pTarget.y);
@@ -936,6 +937,30 @@
         ctx.lineWidth = 0.8;
         ctx.stroke();
 
+        // UUSI ERILLINEN NUOLI HAJONTAYMPYRÄN / KOHTEEN TAAKSE (20M JATKE: 50M -> 70M)
+        const pExtStart = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
+        const pExtEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 70, bearing));
+        const pExtLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 65, bearing + 4));
+        const pExtRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 65, bearing - 4));
+
+        ctx.beginPath();
+        ctx.moveTo(pExtStart.x, pExtStart.y);
+        ctx.lineTo(pExtEnd.x, pExtEnd.y);
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 2;
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(pExtEnd.x, pExtEnd.y);
+        ctx.lineTo(pExtLeftTip.x, pExtLeftTip.y);
+        ctx.lineTo(pExtRightTip.x, pExtRightTip.y);
+        ctx.closePath();
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.strokeStyle = '#0f172a';
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+
         drawSectorConeOnCanvas(activeOrigin, distTee, bearing, 0.2222, false);
         drawSectorConeOnCanvas(activeOrigin, distTee, bearing, 0.1481, true);
 
@@ -948,7 +973,7 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // 1. SEKTORIN PÄÄSSÄ ETÄISYYS TIILTÄ, KORKEUS 10M NUOLEN SUUNTAAN
+        // ETÄISYYS TIILTÄ SEKTORIN PÄÄSSÄ
         ctx.font = 'bold 15px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'center';
@@ -957,25 +982,30 @@
         ctx.fillText(`${distTee}m`, pTarget.x, pTarget.y + 18);
         ctx.shadowBlur = 0;
 
+        // KORKEUSERON BADGE (📐) 20M SEKTORIN PÄÄSTÄ NUOLEN SUUNTAAN
         if (teeElevationMeters !== undefined && targetElevationMeters !== undefined) {
           const diffTeeTarget = Math.round(targetElevationMeters - teeElevationMeters);
-          const pElevationPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing));
+          const pElevationPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 20, bearing));
 
           drawElevationBadge(pElevationPos.x, pElevationPos.y, diffTeeTarget);
         }
 
-        // TARKISTETAAN ZOOMAUSTASO: Zoomed View vs Default View
+        // TARKISTETAAN ZOOMAUSTASO
         const currentZoom = map.getZoom();
         const isZoomedIn = currentZoom > 17.0;
         const step = isZoomedIn ? 10 : 20;
 
-        // 1. PLAYS LIKE ARVO 5M SEKTORIN PÄÄSTÄ NUOLEN LINJALLA (Zoom-näkymässä)
+        // PLAYS LIKE ARVO VÄRILOGIIKALLA 5M SEKTORIN PÄÄSTÄ NUOLEN LINJALLA (Zoom-näkymässä)
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
           const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 5, bearing));
           
+          let textColor = '#ffffff';
+          if (playsLikeDist > distTee) textColor = '#dc2626';     // Longer (Punainen)
+          else if (playsLikeDist < distTee) textColor = '#16a34a'; // Shorter (Vihreä)
+
           ctx.font = 'bold 14px Arial';
-          ctx.fillStyle = '#facc15';
+          ctx.fillStyle = textColor;
           ctx.textAlign = 'center';
           ctx.shadowColor = '#000000';
           ctx.shadowBlur = 4;
@@ -1016,7 +1046,7 @@
             ctx.shadowBlur = 4;
             ctx.fillText(sgText, pSg.x, pSg.y - 4);
 
-            // 2. Oikea laita: Sektorin kaaren etäisyys tiiltä
+            // Oikea laita: Sektorin kaaren etäisyys tiiltä
             const quarterRightAngle = bearing + (deltaAngle / 2);
             const pArcDist = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterRightAngle));
 
@@ -1361,7 +1391,7 @@
             
             updateCalculations();
 
-            // 5. KORKEUSHAKU VASTA KUN LIIKE PYSÄHTYNYT (DEBOUNCE 2.5s)
+            // KORKEUSHAKU VASTA KUN LIIKE PYSÄHTYNYT (DEBOUNCE 2.5s)
             clearTimeout(gpsDebounceTimeout);
             gpsDebounceTimeout = setTimeout(() => {
               triggerElevationUpdate();
@@ -1452,7 +1482,6 @@
       }
     }
 
-    // 4. TUULINUOLTEN SIJAINNIT (LIPULLA 15M OIKEALLE YLÄVIISTOON, SEKTORILLA 10M YLÄVIISTOON)
     function renderWindOverlayIcons() {
       if (teeWindMarker) teeWindMarker.remove();
       if (greenWindMarker) greenWindMarker.remove();
@@ -1495,7 +1524,7 @@
       const mapBearing = map.getBearing ? map.getBearing() : 0;
       const dirTo = (currentWindDirection + 180 - mapBearing) % 360;
       
-      // 4. Sektorilla: 10m oikean reunan jatkeelle yläviistoon
+      // Sektorilla: 10m oikean reunan jatkeelle yläviistoon
       const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 10, bearing + 30);
 
       const el = document.createElement('div');
