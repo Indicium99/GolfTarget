@@ -129,21 +129,21 @@
       padding-top: 3px;
     }
 
-    /* KEVYT TUULI-ELEMENTTI SIIRRETTY KESKELLE YLÄPALKIN ALAPUOLELLE */
+    /* TUULI-ELEMENTTI: ENEMMÄN OIKEALLE, ILMAN TAUSTA-LAATIKKOA, ARVOT LOGON ALAPUOLELLA */
     .fixed-wind-badge {
       position: absolute;
-      top: 105px;
-      left: 50%;
-      transform: translateX(-50%);
+      top: 18px;
+      right: 65px;
       z-index: 9999;
       display: flex;
+      flex-direction: column;
       align-items: center;
-      gap: 6px;
+      gap: 2px;
       pointer-events: none;
       user-select: none;
-      background: rgba(15, 23, 42, 0.7);
-      padding: 2px 8px;
-      border-radius: 20px;
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
     }
 
     .map-controls-left-group {
@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.23.0</div>
+    <div class="vertical-version-tag">v6.24.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -451,14 +451,14 @@
       </div>
     </div>
 
-    <!-- TUULI-BADGE KESKELLÄ YLÄPALKIN ALAPUOLELLA -->
+    <!-- TUULI-BADGE OIKEALLE ILMAN TAUSTA-LAATIKKOA (ARVOT LOGON ALAPUOLELLA) -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
       <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
         <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
       </svg>
-      <div style="font-size: 13.5px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.1;">
-        💨 <span id="fixed-wind-speed">-</span> m/s <span id="fixed-wind-gusts" style="color:#facc15; font-size:11.5px;">(- m/s)</span>
+      <div style="font-size: 12.5px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; text-align: center; line-height: 1.1;">
+        💨 <span id="fixed-wind-speed">-</span> m/s<br><span id="fixed-wind-gusts" style="color:#facc15; font-size:11px;">(- m/s)</span>
       </div>
     </div>
 
@@ -525,7 +525,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.23.0";
+    const APP_VERSION = "v6.24.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -647,10 +647,17 @@
       return el;
     }
 
-    const initialBearing = getBearing(teePosition, greenPosition);
-    const initialTotalDist = calculateDistance(teePosition, greenPosition);
-    const initialTargetDist = Math.min(270, initialTotalDist);
-    targetPosition = getDestinationPoint(teePosition[0], teePosition[1], initialTargetDist, initialBearing);
+    // AUTOMAATTINEN SEKTORIN SIJOITUS VÄYLÄN KESKILINJALLE
+    function autoPositionTarget() {
+      const activeOrigin = userGPSPosition || teePosition;
+      const totalDist = calculateDistance(activeOrigin, greenPosition);
+      const bearing = getBearing(activeOrigin, greenPosition);
+      const targetDist = Math.min(270, totalDist * 0.7);
+      targetPosition = getDestinationPoint(activeOrigin[0], activeOrigin[1], targetDist, bearing);
+      if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
+    }
+
+    autoPositionTarget();
 
     map.on('load', () => {
       hole1TeeMarker = new maplibregl.Marker({ element: createCustomMarkerElement('hole1Tee'), anchor: 'left' })
@@ -671,6 +678,7 @@
 
       enableModeRestrictedDrag(teeMarker, 'tee', (coords) => {
         teePosition = coords;
+        autoPositionTarget();
         updateCalculations();
       }, () => {
         fetchWeatherData();
@@ -679,6 +687,7 @@
 
       enableModeRestrictedDrag(greenMarker, 'green', (coords) => {
         greenPosition = coords;
+        autoPositionTarget();
         updateCalculations();
       }, () => {
         fetchWeatherData();
@@ -726,7 +735,6 @@
       }, 500);
     });
 
-    /* REILUMPI YLÄPEHMUSTE (140px), JOTTA LIPPU EI JÄÄ YLÄPALKIN ALLE */
     function setHoleDefaultView(e) {
       if (e) triggerButtonGuard(e);
       const activeOrigin = userGPSPosition || teePosition;
@@ -894,11 +902,11 @@
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
-      // NUOLI LIPUN TAAKSE (20M LÄHESTYMISLYÖNNIN LINJASSA)
+      // LIPUN LÄHESTYMISNUOLI (50M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI)
       const targetToGreenBearing = getBearing(activeTarget, greenPosition);
-      const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
-      const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing + 4));
-      const pGreenRightTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing - 4));
+      const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 50, targetToGreenBearing));
+      const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 45, targetToGreenBearing + 4));
+      const pGreenRightTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 45, targetToGreenBearing - 4));
 
       ctx.beginPath();
       ctx.moveTo(pGreen.x, pGreen.y);
@@ -920,7 +928,7 @@
 
       if (!isPar3 && targetElevationMeters !== undefined && greenElevationMeters !== undefined) {
         const diffTargetGreen = Math.round(greenElevationMeters - targetElevationMeters);
-        const pLabelTargetGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 10, targetToGreenBearing));
+        const pLabelTargetGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
 
         drawElevationBadge(pLabelTargetGreen.x, pLabelTargetGreen.y, diffTargetGreen);
       }
@@ -934,7 +942,7 @@
         ctx.stroke();
 
         const diffTeeGreen = Math.round(greenElevationMeters - teeElevationMeters);
-        const pLabelTeeGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 10, getBearing(activeOrigin, greenPosition)));
+        const pLabelTeeGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, getBearing(activeOrigin, greenPosition)));
 
         drawElevationBadge(pLabelTeeGreen.x, pLabelTeeGreen.y, diffTeeGreen);
 
@@ -951,7 +959,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLEN KÄRKI MUOTOILTU TERÄVÄKSI (täsmälleen sama kuin lipulla)
+        // SEKTORIN NUOLI TÄSMÄLLEEN SAMALLA SPEKSILLÄ KUIN LIPUN NUOLI (50m runko, 5m kärki ±4°)
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
@@ -986,14 +994,33 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // SEKTORIN PITUUSMITTA (SUUNNASSA BEARING + 15)
+        // SEKTORIN PITUUSMITTA JA PL-ARVO ALEMMAKSI & ISOMMALLA FONTTIKOLLA (bold 22px Arial)
         const pTextPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 2, bearing + 15));
-        ctx.font = 'bold 18px Arial';
+        ctx.font = 'bold 22px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
         ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 5;
+        ctx.shadowBlur = 6;
         ctx.fillText(`${distTee}m`, pTextPos.x + 12, pTextPos.y);
+
+        const currentZoom = map.getZoom();
+        const isZoomedIn = currentZoom > 17.0;
+
+        if (isZoomedIn) {
+          const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
+          const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 5, bearing + 15));
+          
+          let textColor = '#ffffff';
+          if (playsLikeDist > distTee) textColor = '#dc2626';     // Longer
+          else if (playsLikeDist < distTee) textColor = '#16a34a'; // Shorter
+
+          ctx.font = 'bold 22px Arial';
+          ctx.fillStyle = textColor;
+          ctx.textAlign = 'left';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 6;
+          ctx.fillText(`PL ${playsLikeDist}m`, pPlaysLikePos.x + 12, pPlaysLikePos.y + 16);
+        }
         ctx.shadowBlur = 0;
 
         // KORKEUSERON BADGE (📐) 20M SEKTORIN PÄÄSTÄ NUOLEN SUUNTAAN
@@ -1004,27 +1031,7 @@
           drawElevationBadge(pElevationPos.x, pElevationPos.y, diffTeeTarget);
         }
 
-        const currentZoom = map.getZoom();
-        const isZoomedIn = currentZoom > 17.0;
         const step = isZoomedIn ? 10 : 20;
-
-        // PLAYS LIKE ARVO SUORAAN SEKTORIN PITUUSMITAN YLÄPUOLELLE (SAMALLE SIVU-LINJALLE BEARING + 15)
-        if (isZoomedIn) {
-          const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
-          const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing + 15));
-          
-          let textColor = '#ffffff';
-          if (playsLikeDist > distTee) textColor = '#dc2626';     // Longer (Punainen)
-          else if (playsLikeDist < distTee) textColor = '#16a34a'; // Shorter (Vihreä)
-
-          ctx.font = 'bold 18px Arial';
-          ctx.fillStyle = textColor;
-          ctx.textAlign = 'left';
-          ctx.shadowColor = '#000000';
-          ctx.shadowBlur = 5;
-          ctx.fillText(`PL ${playsLikeDist}m`, pPlaysLikePos.x + 12, pPlaysLikePos.y);
-          ctx.shadowBlur = 0;
-        }
 
         // KAARIVIIVAT, SG-TEKSTIT JA KAARILUVUT
         if (distTee >= 140) {
@@ -1193,7 +1200,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.23.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.24.0' }
         });
         const results = await response.json();
 
@@ -1215,23 +1222,20 @@
       for (const item of results) {
         const lat = parseFloat(item.lat);
         const lon = parseFloat(item.lon);
-        const isMaster = item.display_name.toLowerCase().includes("master golf") || (Math.abs(lat - 60.2614) < 0.03 && Math.abs(lon - 24.6816) < 0.03);
 
-        if (isMaster) {
-          const masterHoles = await queryOverpassCourses(lat, lon);
-          if (masterHoles && masterHoles.length > 0) {
-            masterHoles.forEach(h => {
-              const div = document.createElement('div');
-              div.className = 'search-result-item';
-              div.innerText = `${h.courseName} - ${h.holeName}`;
-              div.onclick = (e) => {
-                triggerButtonGuard(e);
-                applyHoleData(h);
-              };
-              listElem.appendChild(div);
-            });
-            continue;
-          }
+        const overpassHoles = await queryOverpassCourses(lat, lon);
+        if (overpassHoles && overpassHoles.length > 0) {
+          overpassHoles.forEach(h => {
+            const div = document.createElement('div');
+            div.className = 'search-result-item';
+            div.innerText = `${h.courseName} - ${h.holeName}`;
+            div.onclick = (e) => {
+              triggerButtonGuard(e);
+              applyHoleData(h);
+            };
+            listElem.appendChild(div);
+          });
+          continue;
         }
 
         const div = document.createElement('div');
@@ -1247,21 +1251,57 @@
       listElem.classList.add('open');
     }
 
+    // DYNAAMINEN OVERPASS API -HAKU (OPENSTREETMAP) ILMAN STAATTISIA KOORDINAATTEJA
     async function queryOverpassCourses(lat, lon) {
-      return [
-        {
-          courseName: 'Master Golf (Master Course)',
-          holeName: '1 Tee',
-          teePos: [24.681644, 60.261447],
-          greenPos: [24.680158, 60.258729]
-        },
-        {
-          courseName: 'Master Golf (Forest Course)',
-          holeName: '1 Tee',
-          teePos: [24.664180, 60.258830],
-          greenPos: [24.666900, 60.258200]
-        }
-      ];
+      const query = `
+        [out:json][timeout:15];
+        (
+          way["golf"="hole"](around:2500,${lat},${lon});
+          relation["golf"="hole"](around:2500,${lat},${lon});
+        );
+        out body center;
+        >;
+        out skel qt;
+      `;
+      const url = `https://overpass-api.de/api/interpreter?data=${encodeURIComponent(query)}`;
+
+      try {
+        const res = await fetch(url);
+        const data = await res.json();
+        
+        if (!data || !data.elements) return [];
+
+        const nodeMap = new Map();
+        data.elements.forEach(el => {
+          if (el.type === 'node') nodeMap.set(el.id, [el.lon, el.lat]);
+        });
+
+        const holes = [];
+        data.elements.forEach(el => {
+          if ((el.type === 'way' || el.type === 'relation') && el.tags && el.tags.golf === 'hole') {
+            const ref = el.tags.ref || el.tags.hole || '1';
+            if (ref === '1' && el.nodes && el.nodes.length >= 2) {
+              const teeCoords = nodeMap.get(el.nodes[0]);
+              const greenCoords = nodeMap.get(el.nodes[el.nodes.length - 1]);
+              const courseName = el.tags.description || el.tags.name || "Golf Course";
+
+              if (teeCoords && greenCoords) {
+                holes.push({
+                  courseName: courseName,
+                  holeName: `Väylä ${ref}`,
+                  teePos: teeCoords,
+                  greenPos: greenCoords
+                });
+              }
+            }
+          }
+        });
+
+        return holes;
+      } catch (err) {
+        console.warn("Overpass-haku epäonnistui:", err);
+        return [];
+      }
     }
 
     function applyHoleData(hole) {
@@ -1274,13 +1314,10 @@
       teePosition = hole.teePos;
       greenPosition = hole.greenPos;
 
-      const bearing = getBearing(teePosition, greenPosition);
-      const dist = calculateDistance(teePosition, greenPosition);
-      targetPosition = hole.centerPos || getDestinationPoint(teePosition[0], teePosition[1], Math.min(270, dist * 0.7), bearing);
+      autoPositionTarget();
 
       teeMarker.setLngLat(teePosition);
       greenMarker.setLngLat(greenPosition);
-      if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
 
       setHoleDefaultView();
 
@@ -1303,12 +1340,10 @@
       teePosition = [lon, lat];
       greenPosition = getDestinationPoint(lon, lat, 350, 0);
 
-      const bearing = getBearing(teePosition, greenPosition);
-      targetPosition = getDestinationPoint(teePosition[0], teePosition[1], 270, bearing);
+      autoPositionTarget();
 
       teeMarker.setLngLat(teePosition);
       greenMarker.setLngLat(greenPosition);
-      if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
 
       setHoleDefaultView();
 
@@ -1379,6 +1414,7 @@
         userMarker = null;
         gpsBtn.classList.remove('gps-active');
         setTeeBtn.style.display = "none";
+        autoPositionTarget();
         updateCalculations();
       } else {
         if (!navigator.geolocation) {
@@ -1403,6 +1439,7 @@
             gpsBtn.classList.add('gps-active');
             setTeeBtn.style.display = "block";
             
+            autoPositionTarget();
             updateCalculations();
 
             clearTimeout(gpsDebounceTimeout);
@@ -1424,6 +1461,7 @@
       if (userGPSPosition) {
         teePosition = userGPSPosition;
         teeMarker.setLngLat(teePosition);
+        autoPositionTarget();
         fetchWeatherData();
         updateCalculations();
         triggerElevationUpdate();
@@ -1790,10 +1828,12 @@
       if (currentMode === 'tee') {
         teePosition = coords;
         teeMarker.setLngLat(coords);
+        autoPositionTarget();
         fetchWeatherData();
       } else if (currentMode === 'green') {
         greenPosition = coords;
         greenMarker.setLngLat(coords);
+        autoPositionTarget();
         updateFixedWindBadge();
       } else if (currentMode === 'target') {
         if (!isTargetLocked) {
