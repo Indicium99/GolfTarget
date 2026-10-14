@@ -430,7 +430,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.19.0</div>
+    <div class="vertical-version-tag">v6.20.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -504,7 +504,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.19.0";
+    const APP_VERSION = "v6.20.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -734,7 +734,7 @@
       
       const dist = calculateDistance(activeOrigin, activeTargetPos);
       if (dist > 1000) {
-        return; // Ei haeta korkeutta yli 1000m etäisyydellä
+        return;
       }
 
       fetchElevationDifferenceDebounced(activeOrigin, activeTargetPos, greenPosition);
@@ -879,10 +879,32 @@
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
+      // UUSI NUOLI LIPUN TAAKSE (20M LÄHESTYMISLYÖNNIN LINJASSA)
+      const targetToGreenBearing = getBearing(activeTarget, greenPosition);
+      const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
+      const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing + 4));
+      const pGreenRightTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing - 4));
+
+      ctx.beginPath();
+      ctx.moveTo(pGreen.x, pGreen.y);
+      ctx.lineTo(pGreenArrowEnd.x, pGreenArrowEnd.y);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(pGreenArrowEnd.x, pGreenArrowEnd.y);
+      ctx.lineTo(pGreenLeftTip.x, pGreenLeftTip.y);
+      ctx.lineTo(pGreenRightTip.x, pGreenRightTip.y);
+      ctx.closePath();
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+
       if (!isPar3 && targetElevationMeters !== undefined && greenElevationMeters !== undefined) {
         const diffTargetGreen = Math.round(greenElevationMeters - targetElevationMeters);
-        const targetToGreenBearing = getBearing(activeTarget, greenPosition);
-        
         const pLabelTargetGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 10, targetToGreenBearing));
 
         drawElevationBadge(pLabelTargetGreen.x, pLabelTargetGreen.y, diffTargetGreen);
@@ -906,7 +928,7 @@
         const distTee = calculateDistance(activeOrigin, activeTarget);
         const bearing = getBearing(activeOrigin, activeTarget);
 
-        // 1. SEKTORIN RUNKOVIIVA (TII -> KOHDE)
+        // SEKTORIN RUNGO
         ctx.beginPath();
         ctx.moveTo(pTee.x, pTee.y);
         ctx.lineTo(pTarget.x, pTarget.y);
@@ -937,7 +959,7 @@
         ctx.lineWidth = 0.8;
         ctx.stroke();
 
-        // UUSI ERILLINEN NUOLI HAJONTAYMPYRÄN / KOHTEEN TAAKSE (20M JATKE: 50M -> 70M)
+        // ERILLINEN NUOLI HAJONTAYMPYRÄN / KOHTEEN TAAKSE (50M -> 70M)
         const pExtStart = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pExtEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 70, bearing));
         const pExtLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 65, bearing + 4));
@@ -973,13 +995,14 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // ETÄISYYS TIILTÄ SEKTORIN PÄÄSSÄ
-        ctx.font = 'bold 15px Arial';
+        // SEKTORIN PITUUSMITTA SIIRRETTY SEKTORIN PÄÄN YLÄPUOLELLE KESKUSTAN OIKEALLE PUOLELLE
+        const pTextPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 5, bearing + 12));
+        ctx.font = 'bold 16px Arial';
         ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 4;
-        ctx.fillText(`${distTee}m`, pTarget.x, pTarget.y + 18);
+        ctx.fillText(`${distTee}m`, pTextPos.x + 8, pTextPos.y);
         ctx.shadowBlur = 0;
 
         // KORKEUSERON BADGE (📐) 20M SEKTORIN PÄÄSTÄ NUOLEN SUUNTAAN
@@ -995,21 +1018,21 @@
         const isZoomedIn = currentZoom > 17.0;
         const step = isZoomedIn ? 10 : 20;
 
-        // PLAYS LIKE ARVO VÄRILOGIIKALLA 5M SEKTORIN PÄÄSTÄ NUOLEN LINJALLA (Zoom-näkymässä)
+        // PLAYS LIKE ARVO SAMALLE LINJALLE 10M PÄÄHÄN VÄRILOGIIKALLA & ISOMMALLA FONTTIKOLLA
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
-          const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 5, bearing));
+          const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing + 12));
           
           let textColor = '#ffffff';
           if (playsLikeDist > distTee) textColor = '#dc2626';     // Longer (Punainen)
           else if (playsLikeDist < distTee) textColor = '#16a34a'; // Shorter (Vihreä)
 
-          ctx.font = 'bold 14px Arial';
+          ctx.font = 'bold 16px Arial';
           ctx.fillStyle = textColor;
-          ctx.textAlign = 'center';
+          ctx.textAlign = 'left';
           ctx.shadowColor = '#000000';
           ctx.shadowBlur = 4;
-          ctx.fillText(`PL ${playsLikeDist}m`, pPlaysLikePos.x, pPlaysLikePos.y - 12);
+          ctx.fillText(`PL ${playsLikeDist}m`, pPlaysLikePos.x + 8, pPlaysLikePos.y);
           ctx.shadowBlur = 0;
         }
 
@@ -1052,6 +1075,7 @@
 
             ctx.font = 'bold 13px Arial';
             ctx.fillStyle = '#cbd5e1';
+            ctx.textAlign = 'center';
             ctx.fillText(`${d}m`, pArcDist.x, pArcDist.y - 4);
             ctx.shadowBlur = 0;
           }
@@ -1179,7 +1203,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.19.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.20.0' }
         });
         const results = await response.json();
 
@@ -1510,7 +1534,7 @@
 
       const teeWindPos = getDestinationPoint(activeOrigin[0], activeOrigin[1], 35, 270);
       
-      // Lippu: 15m oikealle yläviistoon (45 deg)
+      // LIPUN TUULINUOLI: 15M LIPUSTA OIKEALLE YLÄVIISTOON (45 DEG)
       const greenWindPos = getDestinationPoint(greenPosition[0], greenPosition[1], 15, 45);
 
       teeWindMarker = new maplibregl.Marker({ element: createWindElem(), anchor: 'center' }).setLngLat(teeWindPos).addTo(map);
@@ -1524,7 +1548,7 @@
       const mapBearing = map.getBearing ? map.getBearing() : 0;
       const dirTo = (currentWindDirection + 180 - mapBearing) % 360;
       
-      // Sektorilla: 10m oikean reunan jatkeelle yläviistoon
+      // SEKTORIN TUULINUOLI: 10M OIKEAN REUNAN JATKEELLE YLÄVIISTOON
       const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 10, bearing + 30);
 
       const el = document.createElement('div');
