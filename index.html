@@ -129,20 +129,15 @@
       padding-top: 3px;
     }
 
-    /* KIINTEÄ TUULI-BADGE RUUDUN OIKEASSA YLÄKULMASSA YLÄPALKIN ALLA */
+    /* KEVYT KEHYKSETÖN TUULI-ELEMENTTI YLÄPALKIN ALAPUOLELLE */
     .fixed-wind-badge {
       position: absolute;
-      top: 72px;
-      right: 60px;
+      top: 105px;
+      right: 12px;
       z-index: 9999;
-      background: rgba(15, 23, 42, 0.92);
-      border: 1.5px solid #0284c7;
-      border-radius: 8px;
-      padding: 4px 10px;
       display: flex;
       align-items: center;
-      gap: 8px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.6);
+      gap: 6px;
       pointer-events: none;
       user-select: none;
     }
@@ -441,7 +436,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.21.0</div>
+    <div class="vertical-version-tag">v6.22.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -452,7 +447,7 @@
       </div>
     </div>
 
-    <!-- KIINTEÄ TUULI-BADGE RUUDULLE -->
+    <!-- SIIRRETTY JA KEVENNETTY TUULI-BADGE YLÄPALKIN ALAPUOLELLA -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
       <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="36" height="36" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
@@ -527,7 +522,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.21.0";
+    const APP_VERSION = "v6.22.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -952,7 +947,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // PALAUTETTU V6.18.0 MUKAINEN YKSITTÄINEN 50M NUOLI JA TERÄVÄ 5M KÄRKI
+        // SEKTORIN NUOLEN KÄRKI MUOTOILTU täsmälleen SAMAKSI KUIN LIPUN NUOLI
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
@@ -987,7 +982,7 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // SEKTORIN PITUUSMITTA SIIRRETTY 2M YLÖS JA 8M OIKEALLE & FONTTI ISOMMAKSI (18px)
+        // SEKTORIN PITUUSMITTA SIIRRETTY 2M YLÖS JA 8M OIKEALLE (SUUNNAUS BEARING + 15)
         const pTextPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 2, bearing + 15));
         ctx.font = 'bold 18px Arial';
         ctx.fillStyle = '#ffffff';
@@ -1009,7 +1004,7 @@
         const isZoomedIn = currentZoom > 17.0;
         const step = isZoomedIn ? 10 : 20;
 
-        // PLAYS LIKE ARVO SEKTORIN YLÄPUOLELLA ISOMMALLA FONTTIKOLLA (18px)
+        // PLAYS LIKE ARVO SAMALLE 8M LINJALLE OIKEALLE (10M PÄÄHÄN SEKTORIN PÄÄSTÄ)
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
           const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing + 15));
@@ -1194,7 +1189,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.21.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.22.0' }
         });
         const results = await response.json();
 
@@ -1496,7 +1491,6 @@
       }
     }
 
-    /* PÄIVITETÄÄN KIINTEÄ TUULI-BADGE RUUDULLE */
     function updateFixedWindBadge() {
       const mapBearing = map.getBearing ? map.getBearing() : 0;
       const dirTo = (currentWindDirection + 180 - mapBearing) % 360;
