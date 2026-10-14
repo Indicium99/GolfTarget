@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.37.0</div>
+    <div class="vertical-version-tag">v6.38.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.37.0";
+    const APP_VERSION = "v6.38.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -683,9 +683,9 @@
         triggerElevationUpdate();
       });
 
+      // LIPUN SIIRTO: EI KUTSU autoPositionTarget()-FUNKTIOTA, JOTTA SEKTORI SÄILYTTÄÄ ASETETUN PAIKKANSA
       enableModeRestrictedDrag(greenMarker, 'green', (coords) => {
         greenPosition = coords;
-        autoPositionTarget();
         updateCalculations();
       }, () => {
         fetchWeatherData();
@@ -1016,12 +1016,13 @@
         ctx.setLineDash([]);
 
         // 1. TIILTÄ SUORITETTAVAN AVAUSLYÖNNIN SG-LASKENTAFUNKTIO (SEKTORIN SISÄLLE)
+        // KORJATTU: shotDist on avausmatka tiiltä, jolloin koko aloitusetäisyys = shotDist + remGreen
         const calculateTeeTeeSgSingle = (shotDist, remGreen) => {
           if (!shotDist || !remGreen) return { text: "+0.0", val: 0 };
-          const yardsTee = totalDist * 1.09361;
+          const yardsStartTee = (shotDist + remGreen) * 1.09361;
           const yardsRem = remGreen * 1.09361;
 
-          const expStartTee = 0.82 + 0.0084 * yardsTee;
+          const expStartTee = 0.82 + 0.0084 * yardsStartTee;
           const expRemFairway = 0.82 + 0.0084 * yardsRem;
 
           const sgTeeDrive = expStartTee - (expRemFairway + 1);
@@ -1185,7 +1186,7 @@
             const quarterLeftAngle = bearing - (deltaAngle / 2);
             const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
 
-            const remainingToGreen = Math.max(0, totalDist - d);
+            const remainingToGreen = Math.max(0, calculateDistance(activeTarget, greenPosition));
             const sgSingle = calculateTeeTeeSgSingle(d, remainingToGreen);
 
             ctx.font = 'bold 12px Arial';
@@ -1331,7 +1332,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.37.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.38.0' }
         });
         const results = await response.json();
 
@@ -1952,7 +1953,7 @@
       } else if (currentMode === 'green') {
         greenPosition = coords;
         greenMarker.setLngLat(coords);
-        autoPositionTarget();
+        // LIPUN KLIKKAUS: EI KUTSU autoPositionTarget()-FUNKTIOTA, JOTTA SEKTORI SÄILYTTÄÄ ASETETUN PAIKKANSA
         updateFixedWindBadge();
       } else if (currentMode === 'target') {
         if (!isTargetLocked) {
