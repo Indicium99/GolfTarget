@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.35.0</div>
+    <div class="vertical-version-tag">v6.36.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.35.0";
+    const APP_VERSION = "v6.36.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -1016,6 +1016,22 @@
         ctx.setLineDash([]);
 
         // SG-LASKENTAFUNKTIO
+        const calculateFairwaySgSingle = (distStart, remGreen) => {
+          if (!distStart || !remGreen) return { text: "+0.0", val: 0 };
+          const yardsStart = distStart * 1.09361;
+          const yardsRem = remGreen * 1.09361;
+
+          const expStart = 0.82 + 0.0084 * yardsStart;
+          const expRemGreen = 0.82 + 0.0084 * yardsRem;
+
+          const sgGreen = expStart - (expRemGreen + 1);
+          const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
+          return {
+            text: fmt(sgGreen),
+            val: sgGreen
+          };
+        };
+
         const formatSgTrioHTML = (distStart, remGreen) => {
           if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true, rawGreen: 0 };
           const yardsStart = distStart * 1.09361;
@@ -1038,7 +1054,7 @@
           };
         };
 
-        // SG-LUVUT 7% KAARELTA (SIIRRETTY ALKAMAAN 7% YMPYRÄN REUNASTA ULOSPÄIN @ 135 DEG)
+        // LIPUN HAJONTAYMPYRÄN 7% SG-TRIOLI (SIIRRETTY ALKAMAAN 7% YMPYRÄN REUNASTA ULOSPÄIN @ 135 DEG)
         const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7 + 1.5, targetToGreenBearing + 135);
         const pSg7 = map.project(point7At0430);
         const sgTrio7 = formatSgTrioHTML(distTee, meters7);
@@ -1123,7 +1139,7 @@
         const step = isZoomedIn ? 10 : 20;
         const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
-        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ SEKTORIN VÄLIKAARTEN SG-LUVUT
+        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ YKSI VÄYLÄN SG-ARVO SEKTORIN SISÄLLÄ
         if (distTee >= 140) {
           for (let d = 140; d <= distTee; d += step) {
             ctx.beginPath();
@@ -1138,19 +1154,29 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Oikea laita: Sektorin kaaren etäisyys tiiltä + SG-luku
+            // Vasen puoli: Sektorin keskilinjan ja vasemman reunan puoliväli -> VAIN YKSI SG-ARVO
+            const quarterLeftAngle = bearing - (deltaAngle / 2);
+            const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
+
+            const remainingToGreen = Math.max(0, distTee - d);
+            const sgSingle = calculateFairwaySgSingle(d, remainingToGreen);
+
+            ctx.font = 'bold 12px Arial';
+            ctx.fillStyle = sgSingle.val >= 0 ? '#4ade80' : '#f87171';
+            ctx.textAlign = 'center';
+            ctx.shadowColor = '#000000';
+            ctx.shadowBlur = 4;
+            ctx.fillText(sgSingle.text, pSgSinglePos.x, pSgSinglePos.y - 4);
+
+            // Oikea puoli: Sektorin keskilinjan ja oikean reunan puoliväli -> KAAREN ETÄISYYSMITTA
             const quarterRightAngle = bearing + (deltaAngle / 2);
             const pArcDist = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterRightAngle));
-            
-            const remainingToGreen = Math.max(0, distTee - d);
-            const sgArc = formatSgTrioHTML(d, remainingToGreen);
 
             ctx.font = 'bold 12px Arial';
             ctx.fillStyle = '#cbd5e1';
             ctx.textAlign = 'center';
-            ctx.shadowColor = '#000000';
-            ctx.shadowBlur = 4;
-            ctx.fillText(`${d}m (${sgArc.text})`, pArcDist.x, pArcDist.y - 4);
+            ctx.fillText(`${d}m`, pArcDist.x, pArcDist.y - 4);
+
             ctx.shadowBlur = 0;
           }
         }
@@ -1277,7 +1303,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.35.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.36.0' }
         });
         const results = await response.json();
 
