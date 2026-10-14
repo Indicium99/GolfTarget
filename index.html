@@ -129,10 +129,10 @@
       padding-top: 3px;
     }
 
-    /* TUULI-BADGE SIIRRETTY YLÄPALKIN ALAPUOLELLE OIKEALLE, ILMAN LAATIKKOA */
+    /* TUULI-BADGE SELKEÄSTI YLÄPALKIN ALAPUOLELLE OIKEALLE */
     .fixed-wind-badge {
       position: absolute;
-      top: 65px;
+      top: 85px;
       right: 15px;
       z-index: 9999;
       display: flex;
@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.25.0</div>
+    <div class="vertical-version-tag">v6.26.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -451,7 +451,7 @@
       </div>
     </div>
 
-    <!-- TUULI-BADGE SIIRRETTY YLÄPALKIN ALAPUOLELLE OIKEALLE -->
+    <!-- TUULI-BADGE SIIRRETTY SELKEÄSTI YLÄPALKIN ALAPUOLELLE OIKEALLE -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
       <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
@@ -525,7 +525,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.25.0";
+    const APP_VERSION = "v6.26.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -1197,7 +1197,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.25.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.26.0' }
         });
         const results = await response.json();
 
@@ -1787,7 +1787,7 @@
       }
 
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
+      document.getElementById('temp-text').innerHTML = `🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
     function updateCalculations() {
@@ -1839,4 +1839,13 @@
           const newBearing = getBearing(activeOrigin, coords);
           targetPosition = getDestinationPoint(activeOrigin[0], activeOrigin[1], lockedTargetDistance, newBearing);
         }
-        if (targetTouchMarker)
+        if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
+      }
+      updateCalculations();
+      triggerElevationUpdate();
+    });
+
+    updateModeButtonsUI();
+  </script>
+</body>
+</html>
