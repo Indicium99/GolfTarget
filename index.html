@@ -129,11 +129,11 @@
       padding-top: 3px;
     }
 
-    /* TUULI-BADGE SELKEÄSTI YLÄPALKIN ALAPUOLELLE OIKEALLE */
+    /* TUULI-BADGE SIIRRETTY VASEMMALLE YLÄPALKIN ALAPUOLELLE */
     .fixed-wind-badge {
       position: absolute;
       top: 85px;
-      right: 15px;
+      left: 15px;
       z-index: 9999;
       display: flex;
       flex-direction: column;
@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.26.0</div>
+    <div class="vertical-version-tag">v6.27.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -451,7 +451,7 @@
       </div>
     </div>
 
-    <!-- TUULI-BADGE SIIRRETTY SELKEÄSTI YLÄPALKIN ALAPUOLELLE OIKEALLE -->
+    <!-- TUULI-BADGE VASEMMALLE YLÄPALKIN ALAPUOLELLE -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
       <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
@@ -525,7 +525,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.26.0";
+    const APP_VERSION = "v6.27.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -925,9 +925,10 @@
       ctx.lineWidth = 0.8;
       ctx.stroke();
 
+      // LIPUN KORKEUSTIETO 12M ETÄISYYDELLE LIPUSTA
       if (!isPar3 && targetElevationMeters !== undefined && greenElevationMeters !== undefined) {
         const diffTargetGreen = Math.round(greenElevationMeters - targetElevationMeters);
-        const pLabelTargetGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
+        const pLabelTargetGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 12, targetToGreenBearing));
 
         drawElevationBadge(pLabelTargetGreen.x, pLabelTargetGreen.y, diffTargetGreen);
       }
@@ -941,7 +942,7 @@
         ctx.stroke();
 
         const diffTeeGreen = Math.round(greenElevationMeters - teeElevationMeters);
-        const pLabelTeeGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, getBearing(activeOrigin, greenPosition)));
+        const pLabelTeeGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 12, getBearing(activeOrigin, greenPosition)));
 
         drawElevationBadge(pLabelTeeGreen.x, pLabelTeeGreen.y, diffTeeGreen);
 
@@ -958,7 +959,7 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLI (50m runko, 5m kärki ±4°)
+        // SEKTORIN NUOLI (50m runko, 5m kärki ±4°) - KORJATTU TERÄVÄ KÄRKI
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
@@ -993,16 +994,12 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // LUKITUT LUKUARVOT CANVAS-RUUTUKOORDINAATEISSA (SIVUSIIRTYMÄ 22px OIKEALLE P_TARGETISTA)
+        // MITTATEKSTIT SIIRRETTY SEKTORIN ULKOPUOLELLE YLÖSPÄIN & PL YLEMMÄS
         const currentZoom = map.getZoom();
         const isZoomedIn = currentZoom > 17.0;
 
-        ctx.font = 'bold 22px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'left';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 6;
-        ctx.fillText(`${distTee}m`, pTarget.x + 22, pTarget.y + 6);
 
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
@@ -1011,13 +1008,19 @@
           if (playsLikeDist > distTee) textColor = '#dc2626';     // Longer
           else if (playsLikeDist < distTee) textColor = '#16a34a'; // Shorter
 
+          // PL YLEMPÄNÄ
           ctx.font = 'bold 22px Arial';
           ctx.fillStyle = textColor;
           ctx.textAlign = 'left';
-          ctx.shadowColor = '#000000';
-          ctx.shadowBlur = 6;
-          ctx.fillText(`PL ${playsLikeDist}m`, pTarget.x + 22, pTarget.y + 30);
+          ctx.fillText(`PL ${playsLikeDist}m`, pTarget.x + 22, pTarget.y - 28);
         }
+
+        // PERUSMATKA SEN ALAPUOLELLA (SEKÄ KOKOANAU SIVUSSA / ULKOPUOLELLA)
+        ctx.font = 'bold 22px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'left';
+        ctx.fillText(`${distTee}m`, pTarget.x + 22, pTarget.y - 6);
+
         ctx.shadowBlur = 0;
 
         // KORKEUSERON BADGE (📐) 20M SEKTORIN PÄÄSTÄ NUOLEN SUUNTAAN
@@ -1197,7 +1200,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.26.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.27.0' }
         });
         const results = await response.json();
 
