@@ -430,7 +430,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.18.0</div>
+    <div class="vertical-version-tag">v6.19.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -443,7 +443,7 @@
 
     <div class="map-controls-left-group" id="left-controls">
       <button id="btn-zoom-in" class="icon-btn" onclick="zoomInMap(event)" title="Lähennä">+</button>
-      <button id="btn-zoom-out" class="icon-btn" onclick="zoomOutMap(event)" title="Loitonna">−</button>
+      <button id="btn-zoom-out" class="icon-btn" onclick="setHoleDefaultView(event)" title="Loitonna / Oletusnäkymä">−</button>
       
       <button id="btn-reset-rotation" class="icon-btn" onclick="cycleCompassMode(event)" title="Suuntaa väylä / Pohjoinen / Vapaa">
         <div class="btn-compass-wrapper">
@@ -504,7 +504,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.18.0";
+    const APP_VERSION = "v6.19.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -521,6 +521,7 @@
     let currentMode = 'target'; 
     let currentElevationDiffMeters = 0;
     let elevationTimeout = null;
+    let gpsDebounceTimeout = null;
     let isInteractingWithUI = false;
 
     let teeElevationMeters = 0;
@@ -682,6 +683,10 @@
         drawCanvasOverlay();
       });
 
+      map.on('zoom', () => {
+        drawCanvasOverlay();
+      });
+
       map.on('rotate', () => {
         const bearing = map.getBearing();
         const needle = document.getElementById('compass-needle');
@@ -698,7 +703,7 @@
 
       updateVersionTag();
       updateCalculations();
-      
+      setHoleDefaultView();
       triggerElevationUpdate();
 
       setTimeout(() => {
@@ -706,9 +711,32 @@
       }, 500);
     });
 
+    // 1. OLETUSNÄKYMÄ (TII ALHAALLA KESKELLÄ, LIPPU YLHÄÄLLÄ)
+    function setHoleDefaultView(e) {
+      if (e) triggerButtonGuard(e);
+      const activeOrigin = userGPSPosition || teePosition;
+      const bearing = getBearing(activeOrigin, greenPosition);
+
+      const bounds = new maplibregl.LngLatBounds();
+      bounds.extend(activeOrigin);
+      bounds.extend(greenPosition);
+
+      map.fitBounds(bounds, {
+        padding: { top: 80, bottom: 180, left: 50, right: 50 },
+        bearing: bearing,
+        duration: 800
+      });
+    }
+
     function triggerElevationUpdate() {
       const activeOrigin = userGPSPosition || teePosition;
       const activeTargetPos = totalIsPar3() ? greenPosition : (targetPosition || greenPosition);
+      
+      const dist = calculateDistance(activeOrigin, activeTargetPos);
+      if (dist > 1000) {
+        return; // Ei haeta korkeuksia jos kentän ulkopuolella / yli 1000m
+      }
+
       fetchElevationDifferenceDebounced(activeOrigin, activeTargetPos, greenPosition);
     }
 
@@ -885,9 +913,10 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
-        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
-        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
+        // 3. NUOLTA JATKETAAN HAJONTAYMPYRÄN / KOHTEEN TAAKSE 20M
+        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 70, bearing));
+        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 62, bearing + 4));
+        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 62, bearing - 4));
 
         ctx.beginPath();
         ctx.moveTo(pTarget.x, pTarget.y);
@@ -919,17 +948,46 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
+        // 1. SEKTORIN PÄÄSSÄ ETÄISYYS TIILTÄ, KORKEUS 10M NUOLEN SUUNTAAN
+        ctx.font = 'bold 15px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
+        ctx.fillText(`${distTee}m`, pTarget.x, pTarget.y + 18);
+        ctx.shadowBlur = 0;
+
         if (teeElevationMeters !== undefined && targetElevationMeters !== undefined) {
           const diffTeeTarget = Math.round(targetElevationMeters - teeElevationMeters);
-          const pLabelTeeTarget = map.project(activeTarget);
+          const pElevationPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing));
 
-          drawElevationBadge(pLabelTeeTarget.x, pLabelTeeTarget.y, diffTeeTarget);
+          drawElevationBadge(pElevationPos.x, pElevationPos.y, diffTeeTarget);
         }
 
+        // TARKISTETAAN ZOOMAUSTASO: Zoomed View vs Default View
+        const currentZoom = map.getZoom();
+        const isZoomedIn = currentZoom > 17.0;
+        const step = isZoomedIn ? 10 : 20;
+
+        // 1. PLAYS LIKE ARVO 5M SEKTORIN PÄÄSTÄ NUOLEN LINJALLA (Zoom-näkymässä)
+        if (isZoomedIn) {
+          const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
+          const pPlaysLikePos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 5, bearing));
+          
+          ctx.font = 'bold 14px Arial';
+          ctx.fillStyle = '#facc15';
+          ctx.textAlign = 'center';
+          ctx.shadowColor = '#000000';
+          ctx.shadowBlur = 4;
+          ctx.fillText(`PL ${playsLikeDist}m`, pPlaysLikePos.x, pPlaysLikePos.y - 12);
+          ctx.shadowBlur = 0;
+        }
+
+        // KAARIVIIVAT, SG-TEKSTIT JA KAARILUVUT
         if (distTee >= 140) {
           const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
-          for (let d = 140; d <= distTee; d += 20) {
+          for (let d = 140; d <= distTee; d += step) {
             ctx.beginPath();
             const steps = 12;
             for (let i = 0; i <= steps; i++) {
@@ -942,6 +1000,7 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
+            // Vasen laita: SG-arvot
             const quarterLeftAngle = bearing - (deltaAngle / 2);
             const quarterPointOnArc = getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle);
             const pSg = map.project(quarterPointOnArc);
@@ -950,12 +1009,20 @@
             const sgVal = calculateSGValue(d, remToGreen);
             const sgText = sgVal >= 0 ? `+${sgVal.toFixed(1)}` : sgVal.toFixed(1);
 
-            ctx.font = 'bold 15px Arial';
+            ctx.font = 'bold 14px Arial';
             ctx.fillStyle = sgVal >= 0 ? '#4ade80' : '#ffffff';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#000000';
             ctx.shadowBlur = 4;
             ctx.fillText(sgText, pSg.x, pSg.y - 4);
+
+            // 2. Oikea laita: Sektorin kaaren etäisyys tiiltä
+            const quarterRightAngle = bearing + (deltaAngle / 2);
+            const pArcDist = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterRightAngle));
+
+            ctx.font = 'bold 13px Arial';
+            ctx.fillStyle = '#cbd5e1';
+            ctx.fillText(`${d}m`, pArcDist.x, pArcDist.y - 4);
             ctx.shadowBlur = 0;
           }
         }
@@ -1007,19 +1074,7 @@
       const badgeElem = document.getElementById('compass-lock-badge');
 
       if (compassState === 1) {
-        const activeOrigin = userGPSPosition || teePosition;
-        const bearing = getBearing(activeOrigin, greenPosition);
-        
-        const bounds = new maplibregl.LngLatBounds();
-        bounds.extend(activeOrigin);
-        bounds.extend(greenPosition);
-
-        map.fitBounds(bounds, {
-          padding: { top: 120, bottom: 150, left: 60, right: 60 },
-          bearing: bearing,
-          duration: 600
-        });
-
+        setHoleDefaultView();
         map.dragRotate.disable();
         map.touchZoomRotate.disableRotation();
         isRotationLocked = true;
@@ -1041,11 +1096,6 @@
     function zoomInMap(e) {
       triggerButtonGuard(e);
       map.zoomIn();
-    }
-
-    function zoomOutMap(e) {
-      triggerButtonGuard(e);
-      map.zoomOut();
     }
 
     function toggleFactor(type, e) {
@@ -1099,7 +1149,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.18.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.19.0' }
         });
         const results = await response.json();
 
@@ -1188,7 +1238,7 @@
       greenMarker.setLngLat(greenPosition);
       if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
 
-      map.flyTo({ center: teePosition, zoom: 17.2, duration: 1000 });
+      setHoleDefaultView();
 
       fetchWeatherData();
       updateCalculations();
@@ -1216,7 +1266,7 @@
       greenMarker.setLngLat(greenPosition);
       if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
 
-      map.flyTo({ center: teePosition, zoom: 17.0, duration: 1000 });
+      setHoleDefaultView();
 
       fetchWeatherData();
       updateCalculations();
@@ -1302,7 +1352,6 @@
               const el = document.createElement('div');
               el.className = 'gps-user-marker';
               userMarker = new maplibregl.Marker({ element: el }).setLngLat(userGPSPosition).addTo(map);
-              map.flyTo({ center: userGPSPosition, zoom: 17.5 });
             } else {
               userMarker.setLngLat(userGPSPosition);
             }
@@ -1311,7 +1360,12 @@
             setTeeBtn.style.display = "block";
             
             updateCalculations();
-            triggerElevationUpdate();
+
+            // 5. KORKEUSHAKU VASTA KUN LIIKE PYSÄHTYNYT (DEBOUNCE 2.5s)
+            clearTimeout(gpsDebounceTimeout);
+            gpsDebounceTimeout = setTimeout(() => {
+              triggerElevationUpdate();
+            }, 2500);
           },
           function(error) {
             alert("Sijainnin hakeminen epäonnistui.");
@@ -1398,6 +1452,7 @@
       }
     }
 
+    // 4. TUULINUOLTEN SIJAINNIT (LIPULLA 15M OIKEALLE YLÄVIISTOON, SEKTORILLA 10M YLÄVIISTOON)
     function renderWindOverlayIcons() {
       if (teeWindMarker) teeWindMarker.remove();
       if (greenWindMarker) greenWindMarker.remove();
@@ -1425,7 +1480,9 @@
       };
 
       const teeWindPos = getDestinationPoint(activeOrigin[0], activeOrigin[1], 35, 270);
-      const greenWindPos = getDestinationPoint(greenPosition[0], greenPosition[1], 45, 90);
+      
+      // Lippu: 15m oikealle yläviistoon (45 deg)
+      const greenWindPos = getDestinationPoint(greenPosition[0], greenPosition[1], 15, 45);
 
       teeWindMarker = new maplibregl.Marker({ element: createWindElem(), anchor: 'center' }).setLngLat(teeWindPos).addTo(map);
       greenWindMarker = new maplibregl.Marker({ element: createWindElem(), anchor: 'center' }).setLngLat(greenWindPos).addTo(map);
@@ -1437,16 +1494,22 @@
 
       const mapBearing = map.getBearing ? map.getBearing() : 0;
       const dirTo = (currentWindDirection + 180 - mapBearing) % 360;
-      const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 45, bearing + 85);
+      
+      // 4. Sektorilla: 10m oikean reunan jatkeelle yläviistoon
+      const badgePos = getDestinationPoint(targetPos[0], targetPos[1], 10, bearing + 30);
 
       const el = document.createElement('div');
       el.className = 'clean-wind-badge';
       el.innerHTML = `
-        <div style="position: relative; width: 40px; height: 40px; display:flex; align-items:center; justify-content:center;">
-          <svg class="wind-arrow-svg" width="36" height="36" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
+        <div style="position: relative; width: 130px; height: 50px; display:flex; align-items:center; gap:8px;">
+          <svg class="wind-arrow-svg" width="38" height="38" viewBox="0 0 40 40" style="transform: rotate(${dirTo}deg);">
             <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
             <path d="M20 2 L11 36 L20 30 Z" fill="#ffffff" stroke="#ffffff" stroke-width="1"/>
           </svg>
+          <div style="font-size: 13px; font-weight: bold; color: #ffffff; text-shadow: 0 1px 4px #000; line-height: 1.2;">
+            💨 ${Math.round(currentWindSpeed)} m/s<br>
+            <span style="color:#facc15; font-size:11px;">(${Math.round(currentWindGusts)} m/s)</span>
+          </div>
         </div>
       `;
 
@@ -1570,6 +1633,34 @@
       };
 
       return `SG: ${fmtValue(sgFairway)} (${fmtValue(sgRough)} / ${fmtValue(sgSand)})`;
+    }
+
+    function getCalculatedPlaysLikeDistance(distTee) {
+      const activeOrigin = userGPSPosition || teePosition;
+      const activeTarget = totalIsPar3() ? greenPosition : (targetPosition || greenPosition);
+      
+      const shotBearing = getBearing(activeOrigin, activeTarget);     
+      const windToDirection = (currentWindDirection + 180) % 360;      
+
+      const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
+      const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
+
+      const distanceRatio = distTee / 200; 
+
+      let windDistanceImpact = 0;
+      if (includeWind) {
+        if (tailwindComponent < 0) {
+          windDistanceImpact = Math.round(-tailwindComponent * 1.65 * distanceRatio);
+        } else {
+          windDistanceImpact = Math.round(-tailwindComponent * 0.90 * distanceRatio);
+        }
+      }
+
+      const tempDiff = currentTempC - 20;
+      const tempDistanceImpact = includeTemp ? Math.round(-(tempDiff * 0.002) * distTee) : 0; 
+      const elevationImpact = includeElevation ? Math.round(currentElevationDiffMeters * 1.15) : 0;
+
+      return Math.round(distTee + windDistanceImpact + tempDistanceImpact + elevationImpact);
     }
 
     function updateBottomPanelMetrics() {
