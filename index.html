@@ -129,7 +129,6 @@
       padding-top: 3px;
     }
 
-    /* TUULILOGO SIIRRETTY 100PX OIKEALLE KESKIKOHDASTA */
     .fixed-wind-badge {
       position: absolute;
       top: 85px;
@@ -441,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.34.0</div>
+    <div class="vertical-version-tag">v6.35.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -452,7 +451,6 @@
       </div>
     </div>
 
-    <!-- TUULI-BADGE SIIRRETTY 100PX OIKEALLE KESKIKOHDASTA -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
       <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
@@ -526,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.34.0";
+    const APP_VERSION = "v6.35.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -1017,7 +1015,7 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // PALAUTETUT SG-LUVUT 7% KAARELTA (KELLO 04:30 / 135 DEGREES)
+        // SG-LASKENTAFUNKTIO
         const formatSgTrioHTML = (distStart, remGreen) => {
           if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true, rawGreen: 0 };
           const yardsStart = distStart * 1.09361;
@@ -1040,22 +1038,24 @@
           };
         };
 
-        const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7, targetToGreenBearing + 135);
+        // SG-LUVUT 7% KAARELTA (SIIRRETTY ALKAMAAN 7% YMPYRÄN REUNASTA ULOSPÄIN @ 135 DEG)
+        const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7 + 1.5, targetToGreenBearing + 135);
         const pSg7 = map.project(point7At0430);
         const sgTrio7 = formatSgTrioHTML(distTee, meters7);
 
         ctx.font = 'bold 13px Arial';
         ctx.fillStyle = sgTrio7.isPositive ? '#4ade80' : '#f87171';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 4;
         ctx.fillText(sgTrio7.text, pSg7.x, pSg7.y);
 
         ctx.shadowBlur = 0;
 
-        // MITTATEKSTIT (10M KOHDALLA KOHTEESTA ETEENPÄIN SEKTORIN RUNGOLLA)
+        // MITTATEKSTIT (10M KOHDALLA KOHTEESTA ETEENPÄIN SEKTORIN RUNGOLLA + 2M OIKEALLE)
         const textPosAt10m = getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing);
-        const pTextPos = map.project(textPosAt10m);
+        const textPosRight2m = getDestinationPoint(textPosAt10m[0], textPosAt10m[1], 2, bearing + 90);
+        const pTextPos = map.project(textPosRight2m);
 
         const currentZoom = map.getZoom();
         const isZoomedIn = currentZoom > 17.0;
@@ -1066,9 +1066,9 @@
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
           
-          let textColor = '#ffffff';
-          if (playsLikeDist > distTee) textColor = '#dc2626';     // Longer (Punainen)
-          else if (playsLikeDist < distTee) textColor = '#16a34a'; // Shorter (Vihreä)
+          let impactColor = '#ffffff';
+          if (playsLikeDist > distTee) impactColor = '#dc2626';     // Punainen (vastatuuli/pidempi)
+          else if (playsLikeDist < distTee) impactColor = '#16a34a'; // Vihreä (myötätuuli/lyhyempi)
 
           const angleRad = (currentWindDirection + 180 - bearing) * Math.PI / 180;
           const gustTailwind = Math.cos(angleRad) * currentWindGusts;
@@ -1090,28 +1090,24 @@
           let gustPart = (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) ? ` (${playsLikeGustDist}m ${gustSpeedInt}m/s)` : '';
 
           ctx.font = 'bold 18px Arial';
-          ctx.textAlign = 'center';
-
-          // Piirretään PL-pääteksti (väri vaihtuu) ja gustPart (valkoinen) samalle riville
-          const totalTextWidth = ctx.measureText(plMainPart + gustPart).width;
-          const mainWidth = ctx.measureText(plMainPart).width;
-          
-          let startX = pTextPos.x - (totalTextWidth / 2);
-
-          ctx.fillStyle = textColor;
           ctx.textAlign = 'left';
-          ctx.fillText(plMainPart, startX, pTextPos.y - 10);
 
+          // PL valkoisella
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(plMainPart, pTextPos.x, pTextPos.y - 10);
+
+          // Tuulivaikutus/puuska punainen/vihreä/valkoinen logiikan mukaan
           if (gustPart) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillText(gustPart, startX + mainWidth, pTextPos.y - 10);
+            const mainWidth = ctx.measureText(plMainPart).width;
+            ctx.fillStyle = impactColor;
+            ctx.fillText(gustPart, pTextPos.x + mainWidth, pTextPos.y - 10);
           }
         }
 
-        // PERUSMATKA SEN ALAPUOLELLA (10M KOHDALLA)
+        // PERUSMATKA SEN ALAPUOLELLA (10M / 2M OIKEALLE)
         ctx.font = 'bold 20px Arial';
         ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
+        ctx.textAlign = 'left';
         ctx.fillText(`${distTee}m`, pTextPos.x, pTextPos.y + 12);
 
         ctx.shadowBlur = 0;
@@ -1127,7 +1123,7 @@
         const step = isZoomedIn ? 10 : 20;
         const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
-        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT
+        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ SEKTORIN VÄLIKAARTEN SG-LUVUT
         if (distTee >= 140) {
           for (let d = 140; d <= distTee; d += step) {
             ctx.beginPath();
@@ -1142,16 +1138,19 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Oikea laita: Sektorin kaaren etäisyys tiiltä
+            // Oikea laita: Sektorin kaaren etäisyys tiiltä + SG-luku
             const quarterRightAngle = bearing + (deltaAngle / 2);
             const pArcDist = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterRightAngle));
+            
+            const remainingToGreen = Math.max(0, distTee - d);
+            const sgArc = formatSgTrioHTML(d, remainingToGreen);
 
-            ctx.font = 'bold 13px Arial';
+            ctx.font = 'bold 12px Arial';
             ctx.fillStyle = '#cbd5e1';
             ctx.textAlign = 'center';
             ctx.shadowColor = '#000000';
             ctx.shadowBlur = 4;
-            ctx.fillText(`${d}m`, pArcDist.x, pArcDist.y - 4);
+            ctx.fillText(`${d}m (${sgArc.text})`, pArcDist.x, pArcDist.y - 4);
             ctx.shadowBlur = 0;
           }
         }
@@ -1278,7 +1277,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.34.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.35.0' }
         });
         const results = await response.json();
 
