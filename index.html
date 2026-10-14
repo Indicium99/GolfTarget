@@ -129,10 +129,12 @@
       padding-top: 3px;
     }
 
+    /* TUULILOGO SIIRRETTY 100PX OIKEALLE KESKIKOHDASTA */
     .fixed-wind-badge {
       position: absolute;
       top: 85px;
-      left: 15px;
+      left: calc(50% + 100px);
+      transform: translateX(-50%);
       z-index: 9999;
       display: flex;
       flex-direction: column;
@@ -439,7 +441,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.30.0</div>
+    <div class="vertical-version-tag">v6.32.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -450,7 +452,7 @@
       </div>
     </div>
 
-    <!-- TUULI-BADGE VASEMMALLE YLÄPALKIN ALAPUOLELLE -->
+    <!-- TUULI-BADGE SIIRRETTY 100PX OIKEALLE KESKIKOHDASTA -->
     <div class="fixed-wind-badge" id="fixed-wind-badge">
       <svg id="fixed-wind-arrow" class="wind-arrow-svg" width="32" height="32" viewBox="0 0 40 40">
         <path d="M20 2 L29 36 L20 30 Z" fill="#facc15" stroke="#ffffff" stroke-width="1"/>
@@ -524,7 +526,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.30.0";
+    const APP_VERSION = "v6.32.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -918,7 +920,7 @@
       ctx.fillText(`${meters7}m`, pGreen.x, pGreen.y - pxRadius7 - 2);
       ctx.shadowBlur = 0;
 
-      // LIPUN LÄHESTYMISNUOLI (20M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI ±4° - TÄYSIN IDENTTINEN SEKTORIN NUOLEN KANSSA)
+      // LIPUN LÄHESTYMISNUOLI (20M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI ±4°)
       const targetToGreenBearing = getBearing(activeTarget, greenPosition);
       const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
       const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing + 4));
@@ -976,10 +978,10 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLI (20m runko, TERÄVÄ 5m kärki ±4° - IDENTTINEN LIPUN NUOLEN KANSSA)
-        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 20, bearing));
-        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 15, bearing + 4));
-        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 15, bearing - 4));
+        // SEKTORIN NUOLI (50M RUNKO, TERÄVÄ 5M KÄRKI ±4°)
+        const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
+        const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 4));
+        const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 4));
 
         ctx.beginPath();
         ctx.moveTo(pTarget.x, pTarget.y);
@@ -1011,8 +1013,8 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // MITTATEKSTIT SIIRRETTY LUKITUSTI SEKTORIN ULKOPUOLELLE MYÖTÄPÄIVÄÄN (KOHTISUORAAN 90 DEG)
-        const textOffsetPos = getDestinationPoint(activeTarget[0], activeTarget[1], 14, bearing + 90);
+        // MITTATEKSTIT SIIRRETTY 7M ETÄISYYDELLE SEKTORIN LAIDAN VIEREEN
+        const textOffsetPos = getDestinationPoint(activeTarget[0], activeTarget[1], 7, bearing + 90);
         const pTextPos = map.project(textOffsetPos);
 
         const currentZoom = map.getZoom();
@@ -1063,8 +1065,7 @@
 
         ctx.shadowBlur = 0;
 
-        // SG-LUVUT KAARILLA 5% JA 7% KELLO 04:30 KOHDALLA (135 DEGREES BEARING)
-        // FORMAT: SG_viheriö (SG_raffi / SG_bunkkeri)
+        // SG-LASKENTAFUNKTIO
         const formatSgTrioHTML = (distStart, remGreen) => {
           if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true };
           const yardsStart = distStart * 1.09361;
@@ -1086,19 +1087,7 @@
           };
         };
 
-        // 5% KAARI (KELLO 04:30 = bearing + 135)
-        const point5At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters5, targetToGreenBearing + 135);
-        const pSg5 = map.project(point5At0430);
-        const sgTrio5 = formatSgTrioHTML(distTee, meters5);
-        
-        ctx.font = 'bold 13px Arial';
-        ctx.fillStyle = sgTrio5.isPositive ? '#4ade80' : '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 4;
-        ctx.fillText(sgTrio5.text, pSg5.x, pSg5.y);
-
-        // 7% KAARI (KELLO 04:30 = bearing + 135)
+        // SG-LUKU ESITETÄÄN VAIN 7% KAARELLA KELLO 04:30 KOHDALLA (135 DEGREES BEARING)
         const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7, targetToGreenBearing + 135);
         const pSg7 = map.project(point7At0430);
         const sgTrio7 = formatSgTrioHTML(distTee, meters7);
@@ -1106,6 +1095,8 @@
         ctx.font = 'bold 13px Arial';
         ctx.fillStyle = sgTrio7.isPositive ? '#4ade80' : '#ffffff';
         ctx.textAlign = 'center';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 4;
         ctx.fillText(sgTrio7.text, pSg7.x, pSg7.y);
 
         ctx.shadowBlur = 0;
@@ -1272,7 +1263,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.30.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.32.0' }
         });
         const results = await response.json();
 
