@@ -109,15 +109,6 @@
       color: #ffffff;
     }
 
-    .top-banner-line2 {
-      font-size: 15px;
-      font-weight: bold;
-      color: #cbd5e1;
-      margin-top: 3px;
-      border-top: 1px dashed #334155;
-      padding-top: 3px;
-    }
-
     .fixed-wind-badge {
       position: absolute;
       top: 85px;
@@ -460,14 +451,11 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.47.0</div>
+    <div class="vertical-version-tag">v6.48.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
         📍 <span id="dist-total" style="color:#38bdf8;">-</span> m &nbsp;|&nbsp; 📈 <span id="sg-val">SG: -</span>
-      </div>
-      <div class="top-banner-line2">
-        🎯 <span id="top-dist-tee" style="color:#38bdf8;">-</span>m &nbsp;|&nbsp; ⛳ <span id="top-dist-green" style="color:#ffffff;">-</span>m &nbsp;|&nbsp; ↔️ <span id="sector-width" style="color:#cbd5e1;">-</span>
       </div>
     </div>
 
@@ -541,13 +529,12 @@
   </div>
 
   <script>
-    const APP_VERSION = "v6.47.0";
+    const APP_VERSION = "v6.48.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
     let googleApiBlocked = false;
 
-    // Google Maps API Referrer / Authentication Error Catch
     window.gm_authFailure = function() {
-      console.warn("Google Maps API -todennus epäonnistui (esim. RefererNotAllowedMapError). Siirrytään automaattisesti Open-Meteo-varajärjestelmään.");
+      console.warn("Google Maps API -todennus epäonnistui. Siirrytään automaattisesti Open-Meteo-varajärjestelmään.");
       googleApiBlocked = true;
     };
 
@@ -861,10 +848,6 @@
       ctx.textBaseline = 'alphabetic';
     }
 
-    // ==========================================
-    // STROKES GAINED (SG) LASKENTAFUNKTIO
-    // Versio v6.47.0: PGA Tour Baseline & Linear Interpolation
-    // ==========================================
     const PGA_BASELINE = {
       tee: [
         { y: 100, e: 2.85 }, { y: 150, e: 3.00 }, { y: 200, e: 3.25 },
@@ -1151,6 +1134,7 @@
         drawSectorConeOnCanvas(activeOrigin, distTee, bearing, 0.2222, false);
         drawSectorConeOnCanvas(activeOrigin, distTee, bearing, 0.1481, true);
 
+        // PUNAINEN KATKOVIIVA SEKTORISTA LIPULLE
         ctx.beginPath();
         ctx.moveTo(pTarget.x, pTarget.y);
         ctx.lineTo(pGreen.x, pGreen.y);
@@ -1160,16 +1144,27 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // MITTATEKSTIT
+        // ETÄISYYS LIPULLE 20M SEKTORISTA ETEENPÄIN
+        const point20mForward = getDestinationPoint(activeTarget[0], activeTarget[1], 20, targetToGreenBearing);
+        const pDist20m = map.project(point20mForward);
+        const distTargetToGreen = calculateDistance(activeTarget, greenPosition);
+
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 6;
+        ctx.font = 'bold 18px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${distTargetToGreen}m`, pDist20m.x, pDist20m.y);
+        ctx.textBaseline = 'alphabetic';
+
+        // MITTATEKSTIT SEKTORIN PÄÄSSÄ
         const textPosAt10m = getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing);
         const textPosRight2m = getDestinationPoint(textPosAt10m[0], textPosAt10m[1], 2, bearing + 90);
         const pTextPos = map.project(textPosRight2m);
 
         const currentZoom = map.getZoom();
         const isZoomedIn = currentZoom > 17.0;
-
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 6;
 
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
@@ -1269,7 +1264,6 @@
             const quarterLeftAngle = bearing - (deltaAngle / 2);
             const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
 
-            // Dynaaminen matka viheriölle kyseisen kaaren kohdalta
             const centerPtArc = getDestinationPoint(activeOrigin[0], activeOrigin[1], d, bearing);
             const remToGreen = calculateDistance(centerPtArc, greenPosition);
             const sgSingle = calculateTeeTeeSgSingle(d, remToGreen);
@@ -1417,7 +1411,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.47.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.48.0' }
         });
         const results = await response.json();
 
@@ -1890,9 +1884,6 @@
       const distTee = calculateDistance(activeOrigin, activeTarget);
       const distGreen = isPar3 ? totalDistToGreen : (targetPosition ? calculateDistance(activeTarget, greenPosition) : totalDistToGreen);
       
-      const sectorWidthInner = Math.round(distTee * 0.1481);
-      const sectorWidthOuter = Math.round(distTee * 0.2222);
-      
       const shotBearing = getBearing(activeOrigin, activeTarget);     
       const windToDirection = (currentWindDirection + 180) % 360;     
 
@@ -1946,9 +1937,7 @@
 
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
-      document.getElementById('top-dist-tee').innerText = distTee;
-      document.getElementById('top-dist-green').innerText = distGreen;
-      document.getElementById('sector-width').innerText = `${sectorWidthInner} / ${sectorWidthOuter}m`;
+      document.getElementById('dist-total').innerText = totalDistToGreen;
       
       document.getElementById('sg-val').innerHTML = renderStrokesGainedHTML(distTee, distGreen);
 
