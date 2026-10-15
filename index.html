@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.41.0</div>
+    <div class="vertical-version-tag">v6.42.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.41.0";
+    const APP_VERSION = "v6.42.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -534,7 +534,7 @@
     let lockedTargetDistance = 0;
     let userGPSPosition = null;
 
-    let isTargetAutoPositioned = true; // LIPPU SEKTORIN AUTOMAATTIASETTELULLE
+    let isTargetAutoPositioned = true;
     let isRotationLocked = false;
     let compassState = 0; 
 
@@ -648,7 +648,7 @@
     }
 
     function autoPositionTarget() {
-      if (!isTargetAutoPositioned) return; // Jos käyttäjä on manuaalisesti valinnut paikan, älä muuta
+      if (!isTargetAutoPositioned) return;
       const activeOrigin = userGPSPosition || teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
       const bearing = getBearing(activeOrigin, greenPosition);
@@ -694,7 +694,7 @@
       });
 
       enableModeRestrictedDrag(targetTouchMarker, 'target', (coords) => {
-        isTargetAutoPositioned = false; // Käyttäjä siirsi kohdetta manuaalisesti!
+        isTargetAutoPositioned = false;
         if (!isTargetLocked) {
           targetPosition = coords;
         } else {
@@ -853,9 +853,9 @@
       // Väyläosuman odotusarvo E_fw(Y_rem) - kaksivaiheinen malli
       let expRemFairway;
       if (yardsRem < 100) {
-        expRemFairway = 2.30 + 0.0040 * yardsRem; // Pitch / Wedge
+        expRemFairway = 2.30 + 0.0040 * yardsRem; // Pitch / Wedge (< 100 yd)
       } else {
-        expRemFairway = 0.82 + 0.0084 * yardsRem; // Pitkä väylälähestyminen
+        expRemFairway = 0.82 + 0.0084 * yardsRem; // Pitkä väylälähestyminen (>= 100 yd)
       }
 
       // SG = E_tee(Y_tee) - (E_fw(Y_rem) + 1)
@@ -1096,8 +1096,8 @@
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
 
           let mainPlColor = '#ffffff';
-          if (playsLikeDist > distTee) mainPlColor = '#dc2626';     // Punainen (pidempi)
-          else if (playsLikeDist < distTee) mainPlColor = '#16a34a'; // Vihreä (lyhyempi)
+          if (playsLikeDist > distTee) mainPlColor = '#dc2626';     // Punainen
+          else if (playsLikeDist < distTee) mainPlColor = '#16a34a'; // Vihreä
 
           const angleRad = (currentWindDirection + 180 - bearing) * Math.PI / 180;
           const gustTailwind = Math.cos(angleRad) * currentWindGusts;
@@ -1113,8 +1113,8 @@
           const playsLikeGustDist = Math.round(distTee + gustDistanceImpact + tempImpact + elevImpact);
 
           let gustPlColor = '#ffffff';
-          if (playsLikeGustDist > distTee) gustPlColor = '#dc2626';     // Punainen (pidempi)
-          else if (playsLikeGustDist < distTee) gustPlColor = '#16a34a'; // Vihreä (lyhyempi)
+          if (playsLikeGustDist > distTee) gustPlColor = '#dc2626';     // Punainen
+          else if (playsLikeGustDist < distTee) gustPlColor = '#16a34a'; // Vihreä
 
           const windSpeedInt = Math.round(currentWindSpeed);
           const gustSpeedInt = Math.round(currentWindGusts);
@@ -1340,7 +1340,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.41.0' }
+          headers: { 'User-Agent': `MasterGolfApp/${APP_VERSION}` }
         });
         const results = await response.json();
 
@@ -1447,7 +1447,7 @@
       closeSearchResults();
       document.getElementById('search-box').classList.remove('open');
 
-      isTargetAutoPositioned = true; // Uusi kenttä/reikä palauttaa automaattisen asettelun
+      isTargetAutoPositioned = true;
 
       hole1TeePosition = hole.teePos;
       if (hole1TeeMarker) hole1TeeMarker.setLngLat(hole1TeePosition);
@@ -1472,7 +1472,7 @@
       closeSearchResults();
       document.getElementById('search-box').classList.remove('open');
 
-      isTargetAutoPositioned = true; // Uusi hakutulos palauttaa automaattisen asettelun
+      isTargetAutoPositioned = true;
 
       const lat = parseFloat(latStr);
       const lon = parseFloat(lonStr);
@@ -1534,7 +1534,7 @@
         isTargetLocked = !isTargetLocked;
 
         if (isTargetLocked) {
-          isTargetAutoPositioned = false; // Lukitus estää automaattisen asettelun
+          isTargetAutoPositioned = false;
           const activeOrigin = userGPSPosition || teePosition;
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(activeOrigin, activeTarget);
@@ -1583,7 +1583,6 @@
             gpsBtn.classList.add('gps-active');
             setTeeBtn.style.display = "block";
             
-            // Ei nollata kohdetta jos isTargetAutoPositioned === false
             autoPositionTarget();
             updateCalculations();
 
@@ -1925,7 +1924,7 @@
       }
 
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
+      document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
     function updateCalculations() {
@@ -1969,7 +1968,7 @@
         greenMarker.setLngLat(coords);
         updateFixedWindBadge();
       } else if (currentMode === 'target') {
-        isTargetAutoPositioned = false; // Käyttäjän klikkaus poistaa automaattiasettelun
+        isTargetAutoPositioned = false;
         if (!isTargetLocked) {
           targetPosition = coords;
         } else {
