@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Master Golf – Väylä- ja Korkeusmittari v6.44.0</title>
+  <title>Master Golf – Väylä- ja Korkeusmittari v6.45.0</title>
   
   <!-- MapLibre GL JS -->
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
@@ -366,7 +366,7 @@
   <div id="map"></div>
   <canvas id="sector-canvas"></canvas>
 
-  <div class="vertical-version-tag">v6.44.0</div>
+  <div class="vertical-version-tag">v6.45.0</div>
 
   <div class="top-header-banner" id="top-header">
     <div class="top-banner-line1">
@@ -440,7 +440,7 @@
   // ==========================================
   // SOVELLUKSEN VAKIO- JA TILA-MUUTTUJAT
   // ==========================================
-  const APP_VERSION = "v6.44.0";
+  const APP_VERSION = "v6.45.0";
   
   // Oletuskoordinaatit (Master Golf Espoo Väylä 1)
   let teePosition = [24.6612, 60.2285];
@@ -480,7 +480,7 @@
 
   // ==========================================
   // STROKES GAINED (SG) LASKENTAFUNKTIO
-  // v6.44.0: Avauslyönti tiiltä (Tee-to-Fairway)
+  // v6.45.0: Avauslyönti tiiltä (Tee-to-Fairway)
   // ==========================================
   function calculateTeeTeeSgSingle(shotDist, remGreen) {
     if (!shotDist || remGreen === undefined || remGreen === null) return { text: "+0.0", val: 0 };
@@ -490,14 +490,10 @@
     const yardsRem = remGreen * 1.09361;              // Jäljellä oleva matka avauksen jälkeen viheriölle
     
     // 2. PGA Tour / Broadie -odotusarvot (Expected Strokes E)
-    // E_tee: Tiiltä suoritetun avauksen odotusarvo aloitusetäisyydellä Y_tee
     const expTee = 1.15 + 0.0090 * yardsTee;
-    
-    // E_fw: Väylältä suoritettavan lähestymisen odotusarvo jäljellä olevalla matkalla Y_rem
     const expFwRem = 0.82 + 0.0084 * yardsRem;
     
     // 3. Strokes Gained avaukselle (Tee-to-Fairway)
-    // SG = E_tee - (E_fw + 1 lyönti)
     const sgValue = expTee - (expFwRem + 1);
     const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
 
@@ -963,7 +959,6 @@
           const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
           const remainingToGreen = Math.max(0, calculateDistance(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, bearing), greenPosition));
           
-          // KUTSUTAAN KORJATTUA AVAUKSEN SG-FUNKTIOTA
           const sgSingle = calculateTeeTeeSgSingle(d, remainingToGreen);
 
           ctx.font = 'bold 12px Arial';
