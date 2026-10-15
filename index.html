@@ -1090,6 +1090,20 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
+        // JP: ETÄISYYS LIPULLE PALLON JA GRIININ PUOLIVÄLIIN PAR3:
+        const point20mBack = getDestinationPoint(activeTarget[0], activeTarget[1], 0, getBearing(activeTarget, greenPosition));
+        const pDist20m = map.project(point20mBack);
+        const distTargetToGreen = calculateDistance(activeOrigin, greenPosition);
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 6;
+        ctx.font = 'bold 20px Arial';
+        ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(`${distTargetToGreen}m`, pDist20m.x, pDist20m.y);
+        ctx.textBaseline = 'alphabetic';
+        // JP: END INSERT
+
         const diffTeeGreen = Math.round(greenElevationMeters - teeElevationMeters);
         const pLabelTeeGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 12, getBearing(activeOrigin, greenPosition)));
 
