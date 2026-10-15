@@ -2,7 +2,7 @@
 <html lang="fi">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>Master Golf - Väylä- ja Korkeusmittari</title>
 
   <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
@@ -10,6 +10,7 @@
   <meta http-equiv="Expires" content="0">
 
   <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="Master Golf">
   <link rel="apple-touch-icon" href="https://upload.wikimedia.org/wikipedia/commons/6/6b/Golf_icon.png">
@@ -17,8 +18,11 @@
   <!-- MapLibre GL CSS -->
   <link href="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.css" rel="stylesheet" />
 
-  <!-- Google Maps JavaScript API -->
-  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs" async defer></script>
+  <!-- MapLibre GL JS -->
+  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
+
+  <!-- Google Maps JavaScript API SDK -->
+  <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs&loading=async" async defer></script>
 
   <style>
     html, body {
@@ -26,7 +30,7 @@
       padding: 0;
       width: 100%;
       height: 100%;
-      font-family: Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: #0f172a;
       color: #ffffff;
       overflow: hidden;
@@ -61,23 +65,6 @@
       height: 100%;
       pointer-events: none;
       z-index: 10;
-    }
-
-    #info-panel {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 13dvh;
-      min-height: 80px;
-      padding: 6px 12px;
-      box-sizing: border-box;
-      background-color: rgba(15, 23, 42, 0.95);
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      border-top: 2px solid #0284c7;
-      z-index: 2000;
     }
 
     .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-attrib {
@@ -115,11 +102,13 @@
       white-space: nowrap;
       pointer-events: auto;
     }
+
     .top-banner-line1 {
       font-size: 15.5px;
       font-weight: bold;
       color: #ffffff;
     }
+
     .top-banner-line2 {
       font-size: 15px;
       font-weight: bold;
@@ -196,9 +185,11 @@
       box-shadow: 0 4px 12px rgba(0,0,0,0.8);
       z-index: 10000;
     }
+
     .search-results-list.open {
       display: block;
     }
+
     .search-result-item {
       padding: 10px;
       font-size: 13px;
@@ -208,6 +199,7 @@
       white-space: normal;
       line-height: 1.3;
     }
+
     .search-result-item:hover, .search-result-item:active {
       background: #0284c7;
       color: #ffffff;
@@ -234,9 +226,11 @@
       outline: none;
       width: 140px;
     }
+
     .search-input::placeholder {
       color: #94a3b8;
     }
+
     .search-btn {
       background: #0284c7;
       border: none;
@@ -254,7 +248,7 @@
       flex-direction: column;
       gap: 6px;
     }
-    
+
     .icon-btn {
       width: 40px !important;
       height: 40px !important;
@@ -287,12 +281,14 @@
       align-items: center;
       justify-content: center;
     }
+
     .compass-needle-svg {
       width: 24px;
       height: 24px;
       transition: transform 0.2s ease-out;
       filter: drop-shadow(0px 2px 4px rgba(0,0,0,0.8));
     }
+
     .compass-lock-badge {
       position: absolute;
       bottom: 1px;
@@ -303,7 +299,7 @@
 
     .btn-gps.gps-active { background: #0284c7 !important; border-color: #ffffff !important; color: #ffffff !important; }
     .btn-target.locked { background: #facc15 !important; border-color: #ffffff !important; color: #0f172a !important; }
-    
+
     .btn-gps-tee { 
       display: none; 
       height: 40px;
@@ -320,7 +316,25 @@
       box-sizing: border-box;
       white-space: nowrap;
     }
+
     .active-mode { outline: 2.5px solid #ffffff; }
+
+    #info-panel {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 13dvh;
+      min-height: 80px;
+      padding: 6px 12px;
+      box-sizing: border-box;
+      background-color: rgba(15, 23, 42, 0.95);
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      border-top: 2px solid #0284c7;
+      z-index: 2000;
+    }
 
     .metrics-container {
       display: flex;
@@ -331,6 +345,7 @@
       border-radius: 8px;
       border: 1px solid #334155;
     }
+
     .metric-line {
       display: flex;
       justify-content: space-between;
@@ -339,6 +354,7 @@
       font-weight: bold;
       color: #ffffff;
     }
+
     .metric-subline {
       display: flex;
       justify-content: space-between;
@@ -348,7 +364,7 @@
       border-top: 1px dashed #475569;
       padding-top: 4px;
     }
-    
+
     .toggleable-factor {
       cursor: pointer;
       padding: 2px 6px;
@@ -358,10 +374,12 @@
       user-select: none;
       -webkit-tap-highlight-color: transparent;
     }
+
     .toggleable-factor.active {
       background: rgba(56, 189, 248, 0.15);
       border-color: #38bdf8;
     }
+
     .toggleable-factor.inactive {
       opacity: 0.4;
       text-decoration: line-through;
@@ -371,8 +389,8 @@
     .val-shorter { color: #16a34a !important; font-weight: bold; }
     .val-neutral { color: #ffffff !important; font-weight: bold; }
 
-    .sg-positive { color: #4ade80; font-weight: bold; }
-    .sg-negative { color: #f87171; font-weight: bold; }
+    .sg-positive { color: #4ade80 !important; font-weight: bold; }
+    .sg-negative { color: #f87171 !important; font-weight: bold; }
 
     .wind-arrow-svg {
       transition: transform 0.2s ease-out;
@@ -407,6 +425,7 @@
       pointer-events: none;
       user-select: none;
     }
+
     .subtle-tee-dot {
       width: 8px;
       height: 8px;
@@ -415,6 +434,7 @@
       border-radius: 50%;
       box-shadow: 0 0 4px rgba(0,0,0,0.6);
     }
+
     .subtle-tee-text {
       font-size: 10px;
       font-weight: bold;
@@ -440,7 +460,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.39.0</div>
+    <div class="vertical-version-tag">v6.47.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -520,12 +540,16 @@
     </div>
   </div>
 
-  <!-- MapLibre GL JS -->
-  <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
-
   <script>
-    const APP_VERSION = "v6.39.0";
+    const APP_VERSION = "v6.47.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
+    let googleApiBlocked = false;
+
+    // Google Maps API Referrer / Authentication Error Catch
+    window.gm_authFailure = function() {
+      console.warn("Google Maps API -todennus epäonnistui (esim. RefererNotAllowedMapError). Siirrytään automaattisesti Open-Meteo-varajärjestelmään.");
+      googleApiBlocked = true;
+    };
 
     let hole1TeePosition = [24.681644, 60.261447];
     let teePosition = [24.681644, 60.261447];   
@@ -837,6 +861,115 @@
       ctx.textBaseline = 'alphabetic';
     }
 
+    // ==========================================
+    // STROKES GAINED (SG) LASKENTAFUNKTIO
+    // Versio v6.47.0: PGA Tour Baseline & Linear Interpolation
+    // ==========================================
+    const PGA_BASELINE = {
+      tee: [
+        { y: 100, e: 2.85 }, { y: 150, e: 3.00 }, { y: 200, e: 3.25 },
+        { y: 250, e: 3.50 }, { y: 300, e: 3.70 }, { y: 350, e: 3.90 },
+        { y: 400, e: 4.10 }, { y: 450, e: 4.30 }, { y: 500, e: 4.55 }
+      ],
+      fairway: [
+        { y: 10, e: 2.18 },  { y: 30, e: 2.38 },  { y: 50, e: 2.52 },
+        { y: 80, e: 2.70 },  { y: 100, e: 2.80 }, { y: 125, e: 2.88 },
+        { y: 150, e: 2.95 }, { y: 175, e: 3.08 }, { y: 200, e: 3.19 },
+        { y: 225, e: 3.32 }, { y: 250, e: 3.45 }, { y: 300, e: 3.80 },
+        { y: 350, e: 4.15 }, { y: 400, e: 4.55 }
+      ],
+      rough: [
+        { y: 10, e: 2.30 },  { y: 50, e: 2.65 },  { y: 100, e: 2.98 },
+        { y: 150, e: 3.19 }, { y: 200, e: 3.48 }, { y: 250, e: 3.82 },
+        { y: 300, e: 4.25 }, { y: 400, e: 5.00 }
+      ],
+      sand: [
+        { y: 10, e: 2.40 },  { y: 30, e: 2.53 },  { y: 50, e: 2.75 },
+        { y: 100, e: 3.20 }, { y: 150, e: 3.55 }, { y: 200, e: 3.95 }
+      ]
+    };
+
+    function getExpectedStrokes(yards, lie = 'fairway') {
+      const points = PGA_BASELINE[lie] || PGA_BASELINE.fairway;
+      if (yards <= points[0].y) return points[0].e;
+      if (yards >= points[points.length - 1].y) return points[points.length - 1].e;
+
+      for (let i = 0; i < points.length - 1; i++) {
+        const p1 = points[i];
+        const p2 = points[i + 1];
+        if (yards >= p1.y && yards <= p2.y) {
+          const ratio = (yards - p1.y) / (p2.y - p1.y);
+          return p1.e + ratio * (p2.e - p1.e);
+        }
+      }
+      return 3.0;
+    }
+
+    const calculateTeeTeeSgSingle = (shotDist, remGreen) => {
+      if (!shotDist || remGreen === undefined || remGreen === null) return { text: "+0.0", val: 0 };
+      const yardsStartTee = (shotDist + remGreen) * 1.09361;
+      const yardsRem = remGreen * 1.09361;
+
+      const expStartTee = getExpectedStrokes(yardsStartTee, 'tee');
+      const expRemFairway = getExpectedStrokes(yardsRem, 'fairway');
+
+      const sgTeeDrive = expStartTee - (expRemFairway + 1);
+      const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
+      return {
+        text: fmt(sgTeeDrive),
+        val: sgTeeDrive
+      };
+    };
+
+    const formatApproachSgTrioHTML = (distStart, remGreen) => {
+      if (!distStart || remGreen === undefined || remGreen === null) return { text: "+0.0 (0.0 / 0.0)", isPositive: true, rawGreen: 0 };
+      const yardsStart = distStart * 1.09361;
+      const yardsRem = remGreen * 1.09361;
+
+      const expStart = getExpectedStrokes(yardsStart, 'fairway');
+      
+      const expRemGreen = getExpectedStrokes(yardsRem, 'fairway');
+      const expRemRough = getExpectedStrokes(yardsRem, 'rough'); 
+      const expRemSand = getExpectedStrokes(yardsRem, 'sand');
+
+      const sgGreen = expStart - (expRemGreen + 1);
+      const sgRough = expStart - (expRemRough + 1);
+      const sgSand = expStart - (expRemSand + 1);
+
+      const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
+      return {
+        text: `${fmt(sgGreen)} (${fmt(sgRough)} / ${fmt(sgSand)})`,
+        isPositive: sgGreen >= 0,
+        rawGreen: sgGreen
+      };
+    };
+
+    function renderStrokesGainedHTML(distTeeMeters, distGreenMeters) {
+      if (!distTeeMeters || distGreenMeters === undefined || distGreenMeters === null) return "SG: +0.0 (+0.0 / +0.0)";
+      
+      const totalHoleDist = distTeeMeters + distGreenMeters;
+      const yardsTee = totalHoleDist * 1.09361;
+      const yardsRem = distGreenMeters * 1.09361;
+
+      const expStartTee = getExpectedStrokes(yardsTee, 'tee');
+      
+      const expRemFairway = getExpectedStrokes(yardsRem, 'fairway');
+      const expRemRough = getExpectedStrokes(yardsRem, 'rough');
+      const expRemSand = getExpectedStrokes(yardsRem, 'sand');
+
+      const sgFairway = expStartTee - (expRemFairway + 1);
+      const sgRough = expStartTee - (expRemRough + 1);
+      const sgSand = expStartTee - (expRemSand + 1);
+
+      const fmtValue = (val) => {
+        const text = val >= 0 ? `+${val.toFixed(1)}` : val.toFixed(1);
+        const cls = val < 0 ? "sg-negative" : "sg-positive";
+        return `<span class="${cls}">${text}</span>`;
+      };
+
+      return `SG: ${fmtValue(sgFairway)} (${fmtValue(sgRough)} / ${fmtValue(sgSand)})`;
+    }
+
     function drawCanvasOverlay() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
@@ -906,7 +1039,7 @@
       ctx.fillStyle = '#ffffff';
       ctx.fill();
 
-      // YMPYRÖIDEN SÄDE-TEKSTIT (xm) KELLO 03:00 KOHDALLE (+90 DEG)
+      // YMPYRÖIDEN SÄDE-TEKSTIT KELLO 03:00 KOHDALLE (+90 DEG)
       const targetToGreenBearing = getBearing(activeTarget, greenPosition);
       const pText3 = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], meters3, targetToGreenBearing + 90));
       const pText5 = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], meters5, targetToGreenBearing + 90));
@@ -922,7 +1055,7 @@
       ctx.fillText(`${meters7}m`, pText7.x + 4, pText7.y + 3);
       ctx.shadowBlur = 0;
 
-      // LIPUN LÄHESTYMISNUOLI (20M RUNGOLLINEN NUOLI, TERÄVÄ 5M KÄRKI ±4°)
+      // LIPUN LÄHESTYMISNUOLI
       const pGreenArrowEnd = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 20, targetToGreenBearing));
       const pGreenLeftTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing + 4));
       const pGreenRightTip = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 15, targetToGreenBearing - 4));
@@ -945,7 +1078,20 @@
       ctx.lineWidth = 0.8;
       ctx.stroke();
 
-      // LIPUN KORKEUSTIETO 12M ETÄISYYDELLE LIPUSTA
+      // LIPUN HAJONTAYMPYRÄN 7% SG-TRIOLI
+      const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7 + 1.5, targetToGreenBearing + 135);
+      const pSg7 = map.project(point7At0430);
+      const sgTrio7 = formatApproachSgTrioHTML(calculateDistance(activeOrigin, activeTarget), meters7);
+
+      ctx.font = 'bold 13px Arial';
+      ctx.fillStyle = sgTrio7.isPositive ? '#4ade80' : '#f87171';
+      ctx.textAlign = 'left';
+      ctx.shadowColor = '#000000';
+      ctx.shadowBlur = 4;
+      ctx.fillText(sgTrio7.text, pSg7.x, pSg7.y);
+      ctx.shadowBlur = 0;
+
+      // LIPUN KORKEUSTIETO
       if (!isPar3 && targetElevationMeters !== undefined && greenElevationMeters !== undefined) {
         const diffTargetGreen = Math.round(greenElevationMeters - targetElevationMeters);
         const pLabelTargetGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 12, targetToGreenBearing));
@@ -1014,64 +1160,7 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // 1. TIILTÄ SUORITETTAVAN AVAUSLYÖNNIN SG-LASKENTAFUNKTIO (SEKTORIN SISÄLLE)
-        // KORJATTU v6.39.0: Käytetään erillistä avauksen odotusarvofunktiota E_tee
-        const calculateTeeTeeSgSingle = (shotDist, remGreen) => {
-          if (!shotDist || !remGreen) return { text: "+0.0", val: 0 };
-          const yardsStartTee = (shotDist + remGreen) * 1.09361;
-          const yardsRem = remGreen * 1.09361;
-
-          // Tiiltä suoritetun aloituksen odotusarvo (Tee Off)
-          const expStartTee = 1.15 + 0.0090 * yardsStartTee;
-          // Väyläosuman odotusarvo jäljellä olevalle matkalle viheriölle
-          const expRemFairway = 0.82 + 0.0084 * yardsRem;
-
-          const sgTeeDrive = expStartTee - (expRemFairway + 1);
-          const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
-          return {
-            text: fmt(sgTeeDrive),
-            val: sgTeeDrive
-          };
-        };
-
-        // 2. LÄHESTYMISLYÖNNIN SG-LASKENTAFUNKTIO (LIPUN HAJONTAYMPYRÄLLE)
-        const formatApproachSgTrioHTML = (distStart, remGreen) => {
-          if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true, rawGreen: 0 };
-          const yardsStart = distStart * 1.09361;
-          const yardsRem = remGreen * 1.09361;
-
-          const expStart = 0.82 + 0.0084 * yardsStart;
-          const expRemGreen = 0.82 + 0.0084 * yardsRem;
-          const expRemRough = 1.15 + 0.0092 * yardsRem; 
-          const expRemSand = 1.45 + 0.0098 * yardsRem;
-
-          const sgGreen = expStart - (expRemGreen + 1);
-          const sgRough = expStart - (expRemRough + 1);
-          const sgSand = expStart - (expRemSand + 1);
-
-          const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
-          return {
-            text: `${fmt(sgGreen)} (${fmt(sgRough)} / ${fmt(sgSand)})`,
-            isPositive: sgGreen >= 0,
-            rawGreen: sgGreen
-          };
-        };
-
-        // LIPUN HAJONTAYMPYRÄN 7% SG-TRIOLI
-        const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7 + 1.5, targetToGreenBearing + 135);
-        const pSg7 = map.project(point7At0430);
-        const sgTrio7 = formatApproachSgTrioHTML(distTee, meters7);
-
-        ctx.font = 'bold 13px Arial';
-        ctx.fillStyle = sgTrio7.isPositive ? '#4ade80' : '#f87171';
-        ctx.textAlign = 'left';
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 4;
-        ctx.fillText(sgTrio7.text, pSg7.x, pSg7.y);
-
-        ctx.shadowBlur = 0;
-
-        // MITTATEKSTIT (10M KOHDALLA KOHTEESTA ETEENPÄIN SEKTORIN RUNGOLLA + 2M OIKEALLE)
+        // MITTATEKSTIT
         const textPosAt10m = getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing);
         const textPosRight2m = getDestinationPoint(textPosAt10m[0], textPosAt10m[1], 2, bearing + 90);
         const pTextPos = map.project(textPosRight2m);
@@ -1086,8 +1175,8 @@
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
 
           let mainPlColor = '#ffffff';
-          if (playsLikeDist > distTee) mainPlColor = '#dc2626';     // Punainen (pidempi)
-          else if (playsLikeDist < distTee) mainPlColor = '#16a34a'; // Vihreä (lyhyempi)
+          if (playsLikeDist > distTee) mainPlColor = '#dc2626';     
+          else if (playsLikeDist < distTee) mainPlColor = '#16a34a'; 
 
           const angleRad = (currentWindDirection + 180 - bearing) * Math.PI / 180;
           const gustTailwind = Math.cos(angleRad) * currentWindGusts;
@@ -1103,8 +1192,8 @@
           const playsLikeGustDist = Math.round(distTee + gustDistanceImpact + tempImpact + elevImpact);
 
           let gustPlColor = '#ffffff';
-          if (playsLikeGustDist > distTee) gustPlColor = '#dc2626';     // Punainen (pidempi)
-          else if (playsLikeGustDist < distTee) gustPlColor = '#16a34a'; // Vihreä (lyhyempi)
+          if (playsLikeGustDist > distTee) gustPlColor = '#dc2626';     
+          else if (playsLikeGustDist < distTee) gustPlColor = '#16a34a'; 
 
           const windSpeedInt = Math.round(currentWindSpeed);
           const gustSpeedInt = Math.round(currentWindGusts);
@@ -1117,17 +1206,14 @@
 
           let currentX = pTextPos.x;
 
-          // 1. "PL " -> Valkoinen
           ctx.fillStyle = '#ffffff';
           ctx.fillText(plPrefix, currentX, pTextPos.y - 10);
           currentX += ctx.measureText(plPrefix).width;
 
-          // 2. PL-metriarvo -> Punainen/Vihreä/Valkoinen
           ctx.fillStyle = mainPlColor;
           ctx.fillText(plValueStr, currentX, pTextPos.y - 10);
           currentX += ctx.measureText(plValueStr).width;
 
-          // 3. Tuulipurskeosio
           if (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) {
             const openParen = " (";
             const gustValStr = `${playsLikeGustDist}m`;
@@ -1146,7 +1232,6 @@
           }
         }
 
-        // PERUSMATKA SEN ALAPUOLELLA
         ctx.font = 'bold 20px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
@@ -1154,7 +1239,7 @@
 
         ctx.shadowBlur = 0;
 
-        // KORKEUSERON BADGE (📐)
+        // KORKEUSERON BADGE
         if (teeElevationMeters !== undefined && targetElevationMeters !== undefined) {
           const diffTeeTarget = Math.round(targetElevationMeters - teeElevationMeters);
           const pElevationPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 20, bearing));
@@ -1165,7 +1250,7 @@
         const step = isZoomedIn ? 10 : 20;
         const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
-        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ YKSI VÄYLÄN SG-ARVO SEKTORIN SISÄLLÄ
+        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ AVAUKSEN SG-ARVO SEKTORIN SISÄLLÄ
         if (distTee >= 140) {
           for (let d = 140; d <= distTee; d += step) {
             ctx.beginPath();
@@ -1184,8 +1269,10 @@
             const quarterLeftAngle = bearing - (deltaAngle / 2);
             const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
 
-            const remainingToGreen = Math.max(0, calculateDistance(activeTarget, greenPosition));
-            const sgSingle = calculateTeeTeeSgSingle(d, remainingToGreen);
+            // Dynaaminen matka viheriölle kyseisen kaaren kohdalta
+            const centerPtArc = getDestinationPoint(activeOrigin[0], activeOrigin[1], d, bearing);
+            const remToGreen = calculateDistance(centerPtArc, greenPosition);
+            const sgSingle = calculateTeeTeeSgSingle(d, remToGreen);
 
             ctx.font = 'bold 12px Arial';
             ctx.fillStyle = sgSingle.val >= 0 ? '#4ade80' : '#f87171';
@@ -1330,7 +1417,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.39.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.47.0' }
         });
         const results = await response.json();
 
@@ -1619,7 +1706,7 @@
       const lon1 = lng * Math.PI / 180;
 
       const lat2 = Math.asin(Math.sin(lat1) * Math.cos(distance / R) +
-                   Math.cos(lat1) * Math.sin(distance / R) * Math.cos(brng));
+                    Math.cos(lat1) * Math.sin(distance / R) * Math.cos(brng));
       const lon2 = lon1 + Math.atan2(Math.sin(brng) * Math.sin(distance / R) * Math.cos(lat1),
                                      Math.cos(distance / R) - Math.sin(lat1) * Math.sin(lat2));
 
@@ -1690,7 +1777,7 @@
         return parseFloat(cached);
       }
 
-      if (typeof google !== 'undefined' && google.maps && google.maps.ElevationService) {
+      if (!googleApiBlocked && typeof google !== 'undefined' && google.maps && google.maps.ElevationService) {
         try {
           const elevator = new google.maps.ElevationService();
           const location = { lat: lat, lng: lng };
@@ -1766,36 +1853,12 @@
       drawCanvasOverlay();
     }
 
-    function renderStrokesGainedHTML(distTeeMeters, distGreenMeters) {
-      if (!distTeeMeters || !distGreenMeters) return "SG: 0.0 (+0.0 / -0.2)";
-      
-      const yardsStart = distTeeMeters * 1.09361;
-      const yardsRem = distGreenMeters * 1.09361;
-
-      const expStart = 0.82 + 0.0084 * yardsStart;
-      const expRemFairway = 0.82 + 0.0084 * yardsRem;
-      const expRemRough = 1.15 + 0.0092 * yardsRem; 
-      const expRemSand = 1.45 + 0.0098 * yardsRem;
-
-      const sgFairway = expStart - (expRemFairway + 1);
-      const sgRough = expStart - (expRemRough + 1);
-      const sgSand = expStart - (expRemSand + 1);
-
-      const fmtValue = (val) => {
-        const text = val >= 0 ? `+${val.toFixed(1)}` : val.toFixed(1);
-        const cls = val < 0 ? "sg-negative" : "sg-positive";
-        return `<span class="${cls}">${text}</span>`;
-      };
-
-      return `SG: ${fmtValue(sgFairway)} (${fmtValue(sgRough)} / ${fmtValue(sgSand)})`;
-    }
-
     function getCalculatedPlaysLikeDistance(distTee) {
       const activeOrigin = userGPSPosition || teePosition;
       const activeTarget = totalIsPar3() ? greenPosition : (targetPosition || greenPosition);
       
       const shotBearing = getBearing(activeOrigin, activeTarget);     
-      const windToDirection = (currentWindDirection + 180) % 360;      
+      const windToDirection = (currentWindDirection + 180) % 360;     
 
       const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
@@ -1831,7 +1894,7 @@
       const sectorWidthOuter = Math.round(distTee * 0.2222);
       
       const shotBearing = getBearing(activeOrigin, activeTarget);     
-      const windToDirection = (currentWindDirection + 180) % 360;      
+      const windToDirection = (currentWindDirection + 180) % 360;     
 
       const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
