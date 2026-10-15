@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.39.0</div>
+    <div class="vertical-version-tag">v6.40.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.39.0";
+    const APP_VERSION = "v6.40.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -534,6 +534,7 @@
     let lockedTargetDistance = 0;
     let userGPSPosition = null;
 
+    let isTargetAutoPositioned = true; // LIPPU SEKTORIN AUTOMAATTIASETTELULLE
     let isRotationLocked = false;
     let compassState = 0; 
 
@@ -647,6 +648,7 @@
     }
 
     function autoPositionTarget() {
+      if (!isTargetAutoPositioned) return; // Jos käyttäjä on manuaalisesti valinnut paikan, älä muuta
       const activeOrigin = userGPSPosition || teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
       const bearing = getBearing(activeOrigin, greenPosition);
@@ -692,6 +694,7 @@
       });
 
       enableModeRestrictedDrag(targetTouchMarker, 'target', (coords) => {
+        isTargetAutoPositioned = false; // Käyttäjä siirsi kohdetta manuaalisesti!
         if (!isTargetLocked) {
           targetPosition = coords;
         } else {
@@ -835,6 +838,49 @@
       ctx.textBaseline = 'middle';
       ctx.fillText(text, x, y);
       ctx.textBaseline = 'alphabetic';
+    }
+
+    // 1. TIILTÄ SUORITETTAVAN AVAUSLYÖNNIN TÄSMÄLLINEN SG-LASKENTAFUNKTIO (PGA TOUR / BROADIE MODEL)
+    function calculateTeeTeeSgSingle(shotDist, remGreen) {
+      if (!shotDist || !remGreen) return { text: "+0.0", val: 0 };
+      const yardsStartTee = (shotDist + remGreen) * 1.09361;
+      const yardsRem = remGreen * 1.09361;
+
+      // Tiiltä suoritetun aloituksen odotusarvo E_tee(Y_tee)
+      const expStartTee = 1.15 + 0.0090 * yardsStartTee;
+      // Väyläosuman odotusarvo E_fw(Y_rem)
+      const expRemFairway = 0.82 + 0.0084 * yardsRem;
+
+      // SG = E_tee(Y_tee) - (E_fw(Y_rem) + 1)
+      const sgTeeDrive = expStartTee - (expRemFairway + 1);
+      const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
+      return {
+        text: fmt(sgTeeDrive),
+        val: sgTeeDrive
+      };
+    }
+
+    // 2. LÄHESTYMISLYÖNNIN SG-LASKENTAFUNKTIO (LIPUN HAJONTAYMPYRÄLLE)
+    function formatApproachSgTrioHTML(distStart, remGreen) {
+      if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true, rawGreen: 0 };
+      const yardsStart = distStart * 1.09361;
+      const yardsRem = remGreen * 1.09361;
+
+      const expStart = 0.82 + 0.0084 * yardsStart;
+      const expRemGreen = 0.82 + 0.0084 * yardsRem;
+      const expRemRough = 1.15 + 0.0092 * yardsRem; 
+      const expRemSand = 1.45 + 0.0098 * yardsRem;
+
+      const sgGreen = expStart - (expRemGreen + 1);
+      const sgRough = expStart - (expRemRough + 1);
+      const sgSand = expStart - (expRemSand + 1);
+
+      const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
+      return {
+        text: `${fmt(sgGreen)} (${fmt(sgRough)} / ${fmt(sgSand)})`,
+        isPositive: sgGreen >= 0,
+        rawGreen: sgGreen
+      };
     }
 
     function drawCanvasOverlay() {
@@ -1013,49 +1059,6 @@
         ctx.setLineDash([4, 4]);
         ctx.stroke();
         ctx.setLineDash([]);
-
-        // 1. TIILTÄ SUORITETTAVAN AVAUSLYÖNNIN SG-LASKENTAFUNKTIO (SEKTORIN SISÄLLE)
-        // KORJATTU v6.39.0: Käytetään erillistä avauksen odotusarvofunktiota E_tee
-        const calculateTeeTeeSgSingle = (shotDist, remGreen) => {
-          if (!shotDist || !remGreen) return { text: "+0.0", val: 0 };
-          const yardsStartTee = (shotDist + remGreen) * 1.09361;
-          const yardsRem = remGreen * 1.09361;
-
-          // Tiiltä suoritetun aloituksen odotusarvo (Tee Off)
-          const expStartTee = 1.15 + 0.0090 * yardsStartTee;
-          // Väyläosuman odotusarvo jäljellä olevalle matkalle viheriölle
-          const expRemFairway = 0.82 + 0.0084 * yardsRem;
-
-          const sgTeeDrive = expStartTee - (expRemFairway + 1);
-          const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
-          return {
-            text: fmt(sgTeeDrive),
-            val: sgTeeDrive
-          };
-        };
-
-        // 2. LÄHESTYMISLYÖNNIN SG-LASKENTAFUNKTIO (LIPUN HAJONTAYMPYRÄLLE)
-        const formatApproachSgTrioHTML = (distStart, remGreen) => {
-          if (!distStart || !remGreen) return { text: "+0.0 (0.0 / 0.0)", isPositive: true, rawGreen: 0 };
-          const yardsStart = distStart * 1.09361;
-          const yardsRem = remGreen * 1.09361;
-
-          const expStart = 0.82 + 0.0084 * yardsStart;
-          const expRemGreen = 0.82 + 0.0084 * yardsRem;
-          const expRemRough = 1.15 + 0.0092 * yardsRem; 
-          const expRemSand = 1.45 + 0.0098 * yardsRem;
-
-          const sgGreen = expStart - (expRemGreen + 1);
-          const sgRough = expStart - (expRemRough + 1);
-          const sgSand = expStart - (expRemSand + 1);
-
-          const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
-          return {
-            text: `${fmt(sgGreen)} (${fmt(sgRough)} / ${fmt(sgSand)})`,
-            isPositive: sgGreen >= 0,
-            rawGreen: sgGreen
-          };
-        };
 
         // LIPUN HAJONTAYMPYRÄN 7% SG-TRIOLI
         const point7At0430 = getDestinationPoint(greenPosition[0], greenPosition[1], meters7 + 1.5, targetToGreenBearing + 135);
@@ -1330,7 +1333,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.39.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.40.0' }
         });
         const results = await response.json();
 
@@ -1437,6 +1440,8 @@
       closeSearchResults();
       document.getElementById('search-box').classList.remove('open');
 
+      isTargetAutoPositioned = true; // Uusi kenttä/reikä palauttaa automaattisen asettelun
+
       hole1TeePosition = hole.teePos;
       if (hole1TeeMarker) hole1TeeMarker.setLngLat(hole1TeePosition);
 
@@ -1459,6 +1464,8 @@
     async function selectSearchResult(latStr, lonStr, displayName) {
       closeSearchResults();
       document.getElementById('search-box').classList.remove('open');
+
+      isTargetAutoPositioned = true; // Uusi hakutulos palauttaa automaattisen asettelun
 
       const lat = parseFloat(latStr);
       const lon = parseFloat(lonStr);
@@ -1520,6 +1527,7 @@
         isTargetLocked = !isTargetLocked;
 
         if (isTargetLocked) {
+          isTargetAutoPositioned = false; // Lukitus estää automaattisen asettelun
           const activeOrigin = userGPSPosition || teePosition;
           const activeTarget = targetPosition || greenPosition;
           lockedTargetDistance = calculateDistance(activeOrigin, activeTarget);
@@ -1568,6 +1576,7 @@
             gpsBtn.classList.add('gps-active');
             setTeeBtn.style.display = "block";
             
+            // Ei nollata kohdetta jos isTargetAutoPositioned === false
             autoPositionTarget();
             updateCalculations();
 
@@ -1953,6 +1962,7 @@
         greenMarker.setLngLat(coords);
         updateFixedWindBadge();
       } else if (currentMode === 'target') {
+        isTargetAutoPositioned = false; // Käyttäjän klikkaus poistaa automaattiasettelun
         if (!isTargetLocked) {
           targetPosition = coords;
         } else {
