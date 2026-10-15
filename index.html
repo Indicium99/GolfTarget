@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.40.0</div>
+    <div class="vertical-version-tag">v6.41.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.40.0";
+    const APP_VERSION = "v6.41.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -842,14 +842,21 @@
 
     // 1. TIILTÄ SUORITETTAVAN AVAUSLYÖNNIN TÄSMÄLLINEN SG-LASKENTAFUNKTIO (PGA TOUR / BROADIE MODEL)
     function calculateTeeTeeSgSingle(shotDist, remGreen) {
-      if (!shotDist || !remGreen) return { text: "+0.0", val: 0 };
+      if (!shotDist || remGreen === undefined || remGreen === null) return { text: "+0.0", val: 0 };
+      
       const yardsStartTee = (shotDist + remGreen) * 1.09361;
       const yardsRem = remGreen * 1.09361;
 
       // Tiiltä suoritetun aloituksen odotusarvo E_tee(Y_tee)
       const expStartTee = 1.15 + 0.0090 * yardsStartTee;
-      // Väyläosuman odotusarvo E_fw(Y_rem)
-      const expRemFairway = 0.82 + 0.0084 * yardsRem;
+      
+      // Väyläosuman odotusarvo E_fw(Y_rem) - kaksivaiheinen malli
+      let expRemFairway;
+      if (yardsRem < 100) {
+        expRemFairway = 2.30 + 0.0040 * yardsRem; // Pitch / Wedge
+      } else {
+        expRemFairway = 0.82 + 0.0084 * yardsRem; // Pitkä väylälähestyminen
+      }
 
       // SG = E_tee(Y_tee) - (E_fw(Y_rem) + 1)
       const sgTeeDrive = expStartTee - (expRemFairway + 1);
@@ -1333,7 +1340,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.40.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.41.0' }
         });
         const results = await response.json();
 
