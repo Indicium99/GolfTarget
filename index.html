@@ -440,7 +440,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.42.0</div>
+    <div class="vertical-version-tag">v6.43.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -524,7 +524,7 @@
   <script src="https://unpkg.com/maplibre-gl@3.6.2/dist/maplibre-gl.js"></script>
 
   <script>
-    const APP_VERSION = "v6.42.0";
+    const APP_VERSION = "v6.43.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
 
     let hole1TeePosition = [24.681644, 60.261447];
@@ -844,21 +844,22 @@
     function calculateTeeTeeSgSingle(shotDist, remGreen) {
       if (!shotDist || remGreen === undefined || remGreen === null) return { text: "+0.0", val: 0 };
       
+      // Muunnetaan aloituksen kokonaismatka tiiltä lipulle (Y_tee) ja jäljellä oleva matka väylältä lipulle (Y_rem) jaardeiksi
       const yardsStartTee = (shotDist + remGreen) * 1.09361;
       const yardsRem = remGreen * 1.09361;
 
       // Tiiltä suoritetun aloituksen odotusarvo E_tee(Y_tee)
       const expStartTee = 1.15 + 0.0090 * yardsStartTee;
       
-      // Väyläosuman odotusarvo E_fw(Y_rem) - kaksivaiheinen malli
+      // Väyläosuman odotusarvo E_fw(Y_rem) suhteessa jäljellä olevaan matkaan
       let expRemFairway;
       if (yardsRem < 100) {
-        expRemFairway = 2.30 + 0.0040 * yardsRem; // Pitch / Wedge (< 100 yd)
+        expRemFairway = 2.30 + 0.0040 * yardsRem; // Pitch / Wedge -alue (< 100 yd)
       } else {
-        expRemFairway = 0.82 + 0.0084 * yardsRem; // Pitkä väylälähestyminen (>= 100 yd)
+        expRemFairway = 0.82 + 0.0084 * yardsRem; // Normaali väylälähestyminen (>= 100 yd)
       }
 
-      // SG = E_tee(Y_tee) - (E_fw(Y_rem) + 1)
+      // SG = E_tee(Y_tee) - (E_fw(Y_rem) + 1 lyönti)
       const sgTeeDrive = expStartTee - (expRemFairway + 1);
       const fmt = (v) => v >= 0 ? `+${v.toFixed(1)}` : v.toFixed(1);
       return {
@@ -1096,8 +1097,8 @@
           const playsLikeDist = getCalculatedPlaysLikeDistance(distTee);
 
           let mainPlColor = '#ffffff';
-          if (playsLikeDist > distTee) mainPlColor = '#dc2626';     // Punainen
-          else if (playsLikeDist < distTee) mainPlColor = '#16a34a'; // Vihreä
+          if (playsLikeDist > distTee) mainPlColor = '#dc2626';     
+          else if (playsLikeDist < distTee) mainPlColor = '#16a34a'; 
 
           const angleRad = (currentWindDirection + 180 - bearing) * Math.PI / 180;
           const gustTailwind = Math.cos(angleRad) * currentWindGusts;
@@ -1113,8 +1114,8 @@
           const playsLikeGustDist = Math.round(distTee + gustDistanceImpact + tempImpact + elevImpact);
 
           let gustPlColor = '#ffffff';
-          if (playsLikeGustDist > distTee) gustPlColor = '#dc2626';     // Punainen
-          else if (playsLikeGustDist < distTee) gustPlColor = '#16a34a'; // Vihreä
+          if (playsLikeGustDist > distTee) gustPlColor = '#dc2626';     
+          else if (playsLikeGustDist < distTee) gustPlColor = '#16a34a'; 
 
           const windSpeedInt = Math.round(currentWindSpeed);
           const gustSpeedInt = Math.round(currentWindGusts);
@@ -1127,17 +1128,14 @@
 
           let currentX = pTextPos.x;
 
-          // 1. "PL " -> Valkoinen
           ctx.fillStyle = '#ffffff';
           ctx.fillText(plPrefix, currentX, pTextPos.y - 10);
           currentX += ctx.measureText(plPrefix).width;
 
-          // 2. PL-metriarvo -> Punainen/Vihreä/Valkoinen
           ctx.fillStyle = mainPlColor;
           ctx.fillText(plValueStr, currentX, pTextPos.y - 10);
           currentX += ctx.measureText(plValueStr).width;
 
-          // 3. Tuulipurskeosio
           if (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) {
             const openParen = " (";
             const gustValStr = `${playsLikeGustDist}m`;
@@ -1156,7 +1154,6 @@
           }
         }
 
-        // PERUSMATKA SEN ALAPUOLELLA
         ctx.font = 'bold 20px Arial';
         ctx.fillStyle = '#ffffff';
         ctx.textAlign = 'left';
@@ -1175,7 +1172,7 @@
         const step = isZoomedIn ? 10 : 20;
         const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
-        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ YKSI VÄYLÄN SG-ARVO SEKTORIN SISÄLLÄ
+        // KAARIVIIVAT, ETÄISYYDET JA TIILTÄ LYÖTYJÄ AVAUKSEN SG-LUKUJA
         if (distTee >= 140) {
           for (let d = 140; d <= distTee; d += step) {
             ctx.beginPath();
