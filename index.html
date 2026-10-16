@@ -451,7 +451,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.48.0</div>
+    <div class="vertical-version-tag">v6.52.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -529,7 +529,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v6.48.0";
+    const APP_VERSION = "v6.52.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
     let googleApiBlocked = false;
 
@@ -888,12 +888,13 @@
       return 3.0;
     }
 
-    const calculateTeeTeeSgSingle = (shotDist, remGreen) => {
+    const calculateTeeTeeSgSingle = (shotDist, remGreen, directHoleDist) => {
       if (!shotDist || remGreen === undefined || remGreen === null) return { text: "+0.0", val: 0 };
-      const yardsStartTee = (shotDist + remGreen) * 1.09361;
+      
+      const yardsDirectHole = (directHoleDist || (shotDist + remGreen)) * 1.09361;
       const yardsRem = remGreen * 1.09361;
 
-      const expStartTee = getExpectedStrokes(yardsStartTee, 'tee');
+      const expStartTee = getExpectedStrokes(yardsDirectHole, 'tee');
       const expRemFairway = getExpectedStrokes(yardsRem, 'fairway');
 
       const sgTeeDrive = expStartTee - (expRemFairway + 1);
@@ -927,14 +928,14 @@
       };
     };
 
-    function renderStrokesGainedHTML(distTeeMeters, distGreenMeters) {
+    function renderStrokesGainedHTML(distTeeMeters, distGreenMeters, directHoleMeters) {
       if (!distTeeMeters || distGreenMeters === undefined || distGreenMeters === null) return "SG: +0.0 (+0.0 / +0.0)";
       
-      const totalHoleDist = distTeeMeters + distGreenMeters;
-      const yardsTee = totalHoleDist * 1.09361;
+      const totalDirectDist = directHoleMeters || calculateDistance(userGPSPosition || teePosition, greenPosition);
+      const yardsDirectTee = totalDirectDist * 1.09361;
       const yardsRem = distGreenMeters * 1.09361;
 
-      const expStartTee = getExpectedStrokes(yardsTee, 'tee');
+      const expStartTee = getExpectedStrokes(yardsDirectTee, 'tee');
       
       const expRemFairway = getExpectedStrokes(yardsRem, 'fairway');
       const expRemRough = getExpectedStrokes(yardsRem, 'rough');
@@ -1090,20 +1091,6 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // JP: ETÄISYYS LIPULLE PALLON JA GRIININ PUOLIVÄLIIN PAR3:
-        const point20mBack = getDestinationPoint(activeTarget[0], activeTarget[1], 0, getBearing(activeTarget, greenPosition));
-        const pDist20m = map.project(point20mBack);
-        const distTargetToGreen = calculateDistance(activeOrigin, greenPosition);
-        ctx.shadowColor = '#000000';
-        ctx.shadowBlur = 6;
-        ctx.font = 'bold 20px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText(`${distTargetToGreen}m`, pDist20m.x, pDist20m.y);
-        ctx.textBaseline = 'alphabetic';
-        // JP: END INSERT
-
         const diffTeeGreen = Math.round(greenElevationMeters - teeElevationMeters);
         const pLabelTeeGreen = map.project(getDestinationPoint(greenPosition[0], greenPosition[1], 12, getBearing(activeOrigin, greenPosition)));
 
@@ -1246,6 +1233,21 @@
         ctx.textAlign = 'left';
         ctx.fillText(`${distTee}m`, pTextPos.x, pTextPos.y + 12);
 
+        // LEVEYSTIETO SEKTORIN VASEMMAN KULMAN YLÄPUOLELLE HARMAALLA (ISOMPI LEVEYS / PIENEMPI LEVEYS)
+        const deltaAngleWidth = Math.atan(0.2222 / 2) * (180 / Math.PI);
+        const leftCornerGeo = getDestinationPoint(activeOrigin[0], activeOrigin[1], distTee, bearing - deltaAngleWidth);
+        const pLeftCorner = map.project(leftCornerGeo);
+
+        const widthOuterMeters = Math.round(2 * distTee * Math.tan(deltaAngleWidth * Math.PI / 180));
+        const widthInnerMeters = Math.round(distTee * 0.1481);
+
+        ctx.font = 'bold 15px Arial';
+        ctx.fillStyle = '#cbd5e1'; // Harmaa sävy
+        ctx.textAlign = 'left';
+        ctx.shadowColor = '#000000';
+        ctx.shadowBlur = 5;
+        ctx.fillText(`↔ ${widthOuterMeters}m / ${widthInnerMeters}m`, pLeftCorner.x - 10, pLeftCorner.y - 14);
+
         ctx.shadowBlur = 0;
 
         // KORKEUSERON BADGE
@@ -1261,6 +1263,8 @@
 
         // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ AVAUKSEN SG-ARVO SEKTORIN SISÄLLÄ
         if (distTee >= 140) {
+          const directHoleDist = calculateDistance(activeOrigin, greenPosition);
+          
           for (let d = 140; d <= distTee; d += step) {
             ctx.beginPath();
             const steps = 12;
@@ -1280,7 +1284,9 @@
 
             const centerPtArc = getDestinationPoint(activeOrigin[0], activeOrigin[1], d, bearing);
             const remToGreen = calculateDistance(centerPtArc, greenPosition);
-            const sgSingle = calculateTeeTeeSgSingle(d, remToGreen);
+            
+            // Huomioidaan suora etäisyys tiiltä lipulle
+            const sgSingle = calculateTeeTeeSgSingle(d, remToGreen, directHoleDist);
 
             ctx.font = 'bold 12px Arial';
             ctx.fillStyle = sgSingle.val >= 0 ? '#4ade80' : '#f87171';
@@ -1425,7 +1431,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.48.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.52.0' }
         });
         const results = await response.json();
 
@@ -1953,7 +1959,7 @@
 
       document.getElementById('dist-total').innerText = totalDistToGreen;
       
-      document.getElementById('sg-val').innerHTML = renderStrokesGainedHTML(distTee, distGreen);
+      document.getElementById('sg-val').innerHTML = renderStrokesGainedHTML(distTee, distGreen, totalDistToGreen);
 
       const playsLikeElem = document.getElementById('plays-like-val');
       
