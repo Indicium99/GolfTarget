@@ -25,12 +25,12 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs&loading=async" async defer></script>
 
   <style>
-/* 1. Pakotetaan runko näytön kaikkien fyysisten reunojen sisään */
+/* 1. Koko näytön runko lukitaan absoluuttisesti fyysisiin reunoihin 100% kookla */
 html, body {
   margin: 0;
   padding: 0;
-  width: 100vw;
-  height: 100dvh;
+  width: 100%;
+  height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   background-color: #0f172a;
   color: #ffffff;
@@ -42,10 +42,11 @@ html, body {
   bottom: 0;
   touch-action: none;
   box-sizing: border-box;
+  -webkit-text-size-adjust: 100%;
 }
 
-/* 2. Karttasäiliö, MapLibre ja Canvas pakotetaan ulottumaan tasan alareunaan asti */
-#map-wrapper {
+/* 2. Karttasäiliö ja MapLibre pakotetaan tasan rungon reunoihin */
+#map-wrapper, #map {
   position: absolute;
   top: 0;
   left: 0;
@@ -57,17 +58,7 @@ html, body {
   background-color: #0f172a;
 }
 
-#map {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  width: 100%;
-  height: 100%;
-  background-color: #0f172a;
-}
-
+/* 3. Canvas pakotetaan samoihin mittoihin ilman peittävää taustaväriä */
 #sector-canvas {
   position: absolute;
   top: 0;
@@ -76,9 +67,11 @@ html, body {
   bottom: 0;
   width: 100%;
   height: 100%;
+  overflow: hidden;
   pointer-events: none;
   z-index: 10;
 }
+
 
     .maplibregl-ctrl-bottom-left, .maplibregl-ctrl-bottom-right, .maplibregl-ctrl-attrib {
       display: none !important;
@@ -211,7 +204,7 @@ html, body {
       color: #ffffff;
     }
 
-                                                                .map-controls-right {
+    .map-controls-right {
       position: absolute;
       top: calc(env(safe-area-inset-top, 0px) - 2px);
       right: 10px;
@@ -515,7 +508,7 @@ html, body {
       </div>
     </div>
 
-        <div class="map-controls-right" id="map-controls">
+    <div class="map-controls-right" id="map-controls">
       <button id="btn-mark-ball" class="btn-gps-tee" onclick="markBallToGPS(event)" title="Aseta lyöntipaikka pallolle">Mark 📍</button>
 
       <div class="icon-buttons-group">
@@ -546,7 +539,7 @@ html, body {
 
 
     <script>
-    const APP_VERSION = "v6.66.0";
+    const APP_VERSION = "v6.67.0";
     const PAR3_MAX_DISTANCE = 200; // Siirretään tulevaisuudessa asetuksiin
     let forceShowSectorInPar3 = false; // Käyttäjä voi pakottaa sektorin näkyviin Par 3 -tilassa painamalla 🎯
 
@@ -630,14 +623,22 @@ html, body {
     const canvas = document.getElementById('sector-canvas');
     const ctx = canvas.getContext('2d');
 
-    function resizeCanvas() {
+  function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
       if (map) map.resize();
     }
-    window.addEventListener('resize', resizeCanvas);
+    
+    // Pakotetaan Safarin viivekorjaus resize-tapahtumiin
+    window.addEventListener('resize', () => {
+      resizeCanvas();
+      setTimeout(resizeCanvas, 100);
+      setTimeout(resizeCanvas, 300);
+    });
+    
+    // Ajetaan myös kerran välittömästi
     resizeCanvas();
-
+    
     function updateVersionTag() {
       const versionTagElem = document.querySelector('.vertical-version-tag');
       if (versionTagElem) {
@@ -1547,7 +1548,7 @@ html, body {
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.56.0' }
+          headers: { 'User-Agent': `MasterGolfApp/${APP_VERSION}` }
         });
         const results = await response.json();
 
