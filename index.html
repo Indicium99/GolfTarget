@@ -91,7 +91,7 @@
 
                         .top-header-banner {
           position: absolute;
-          top: env(safe-area-inset-top, 0px);
+          top: calc(env(safe-area-inset-top, 0px) - 2px); /* Kokeile -2px tai -4px */
           left: 50%;
           transform: translateX(-50%);
           z-index: 9999;
@@ -130,7 +130,7 @@
 
         .map-controls-left-group {
           position: absolute;
-          top: env(safe-area-inset-top, 0px);
+          top: calc(env(safe-area-inset-top, 0px) - 2px);
           left: 10px;
           z-index: 9999;
           display: flex;
@@ -200,7 +200,7 @@
 
                                                                 .map-controls-right {
       position: absolute;
-      top: env(safe-area-inset-top, 0px);
+      top: calc(env(safe-area-inset-top, 0px) - 2px);
       right: 10px;
       z-index: 9999;
       display: flex;
