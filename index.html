@@ -25,48 +25,41 @@
   <script src="https://maps.googleapis.com/maps/api/js?key=AIzaSyD-UoHpaTKS9lOsWg2rFusgamKpjLhAgIs&loading=async" async defer></script>
 
   <style>
+    /* =========================================================
+       DYNAMIC VIEWPORT LAYOUT & ABSOLUTE INSET ANKKUROINTI
+       ========================================================= */
     html, body {
       margin: 0;
       padding: 0;
-      width: 100%;
-      height: 100%;
+      width: 100vw;
+      height: 100dvh; /* Dynamic Viewport Height: Estää tyhjät raot pystysuunnassa */
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
       background-color: #0f172a;
       color: #ffffff;
       overflow: hidden;
       position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
       touch-action: none;
       box-sizing: border-box;
     }
 
-    #map-wrapper {
-      width: 100%;
-      height: 100%;
+    /* Karttasäiliö, kartta ja canvas ankkuroitu täysin kaikkiin 4 reunaan */
+    #map-wrapper, #map, #sector-canvas {
       position: absolute;
       top: 0;
       left: 0;
+      right: 0;
       bottom: 0;
+      width: 100%;
+      height: 100%;
       overflow: hidden;
       background-color: #0f172a;
     }
 
-    #map {
-      width: 100%;
-      height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
-      bottom: 0;
-      right: 0;
-      background-color: #0f172a;
-    }
-
     #sector-canvas {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
       pointer-events: none;
       z-index: 10;
     }
@@ -75,71 +68,88 @@
       display: none !important;
     }
 
-        .vertical-version-tag {
-          position: absolute;
-          left: 8px;
-          top: 40%;
-          transform: translateY(-50%) rotate(-90deg);
-          transform-origin: center left;
-          z-index: 9999;
-          font-size: 13px;
-          font-weight: bold;
-          color: rgba(255, 255, 255, 0.85);
-          letter-spacing: 1px;
-          pointer-events: none;
-          white-space: nowrap;
-          user-select: none;
-        }
+    .vertical-version-tag {
+      position: absolute;
+      left: 8px;
+      top: 40%;
+      transform: translateY(-50%) rotate(-90deg);
+      transform-origin: center left;
+      z-index: 9999;
+      font-size: 13px;
+      font-weight: bold;
+      color: rgba(255, 255, 255, 0.85);
+      letter-spacing: 1px;
+      pointer-events: none;
+      white-space: nowrap;
+      user-select: none;
+    }
 
-                        .top-header-banner {
-          position: absolute;
-          top: calc(env(safe-area-inset-top, 0px) - 2px); /* Kokeile -2px tai -4px */
-          left: 50%;
-          transform: translateX(-50%);
-          z-index: 9999;
-          background: rgba(15, 23, 42, 0.94);
-          border: 1.5px solid #0284c7;
-          border-radius: 10px;
-          padding: 4px 14px;
-          box-shadow: 0 4px 12px rgba(0,0,0,0.7);
-          text-align: center;
-          white-space: nowrap;
-          pointer-events: auto;
-        }
+    /* UI-ELEMENTIT: Ankkurointi 0-tasoon + margin-top safe-area-inset-top */
+    .top-header-banner {
+      position: absolute;
+      top: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      margin-top: env(safe-area-inset-top, 0px);
+      z-index: 9999;
+      background: rgba(15, 23, 42, 0.94);
+      border: 1.5px solid #0284c7;
+      border-radius: 10px;
+      padding: 4px 14px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.7);
+      text-align: center;
+      white-space: nowrap;
+      pointer-events: auto;
+    }
 
-        .top-banner-line1 {
-          font-size: 15px;
-          font-weight: bold;
-          color: #ffffff;
-        }
+    .top-banner-line1 {
+      font-size: 15px;
+      font-weight: bold;
+      color: #ffffff;
+    }
 
-        .fixed-wind-badge {
-          position: absolute;
-          top: calc(env(safe-area-inset-top, 0px) + 38px);
-          left: calc(50% + 100px);
-          transform: translateX(-50%);
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          gap: 2px;
-          pointer-events: none;
-          user-select: none;
-          background: transparent;
-          padding: 0;
-          border-radius: 0;
-        }
+    .fixed-wind-badge {
+      position: absolute;
+      top: 0;
+      left: calc(50% + 100px);
+      transform: translateX(-50%);
+      margin-top: calc(env(safe-area-inset-top, 0px) + 38px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      pointer-events: none;
+      user-select: none;
+      background: transparent;
+      padding: 0;
+      border-radius: 0;
+    }
 
-        .map-controls-left-group {
-          position: absolute;
-          top: calc(env(safe-area-inset-top, 0px) - 2px);
-          left: 10px;
-          z-index: 9999;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-          pointer-events: auto;
-        }
+    .map-controls-left-group {
+      position: absolute;
+      top: 0;
+      left: 10px;
+      margin-top: env(safe-area-inset-top, 0px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      pointer-events: auto;
+    }
+
+    .map-controls-right {
+      position: absolute;
+      top: 0;
+      right: 10px;
+      margin-top: env(safe-area-inset-top, 0px);
+      z-index: 9999;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 6px;
+      pointer-events: auto;
+    }
 
     .search-wrapper-left {
       position: relative;
@@ -198,18 +208,6 @@
     .search-result-item:hover, .search-result-item:active {
       background: #0284c7;
       color: #ffffff;
-    }
-
-                                                                .map-controls-right {
-      position: absolute;
-      top: calc(env(safe-area-inset-top, 0px) - 2px);
-      right: 10px;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
-      gap: 6px;
-      pointer-events: auto;
     }
 
     .search-input {
@@ -314,10 +312,12 @@
 
     .active-mode { outline: 2.5px solid #ffffff; }
 
+    /* INFOPANEELI ALHAALLA: Ankkurointi alareunaan + margin-bottom safe-area-inset-bottom */
     #info-panel {
       position: absolute;
       left: 8px;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); /* Nosto 8px turvaalueesta */
+      bottom: 0;
+      margin-bottom: env(safe-area-inset-bottom, 0px);
       top: auto;
       width: auto;
       height: auto;
@@ -359,7 +359,7 @@
       margin-bottom: 1px;
     }
 
-     .toggleable-factor {
+    .toggleable-factor {
       cursor: pointer;
       padding: 4px 7px;
       background: #0f172a;
@@ -504,7 +504,7 @@
       </div>
     </div>
 
-        <div class="map-controls-right" id="map-controls">
+    <div class="map-controls-right" id="map-controls">
       <button id="btn-mark-ball" class="btn-gps-tee" onclick="markBallToGPS(event)" title="Aseta lyöntipaikka pallolle">Mark 📍</button>
 
       <div class="icon-buttons-group">
@@ -533,11 +533,10 @@
     </div>
   </div>
 
-
-    <script>
-    const APP_VERSION = "v6.66.0";
-    const PAR3_MAX_DISTANCE = 200; // Siirretään tulevaisuudessa asetuksiin
-    let forceShowSectorInPar3 = false; // Käyttäjä voi pakottaa sektorin näkyviin Par 3 -tilassa painamalla 🎯
+  <script>
+    const APP_VERSION = "v6.75.0";
+    const PAR3_MAX_DISTANCE = 200;
+    let forceShowSectorInPar3 = false;
 
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
     let googleApiBlocked = false;
@@ -667,7 +666,7 @@
       return el;
     }
 
-        function isPar3Active() {
+    function isPar3Active() {
       const activeOrigin = teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
       return (totalDist <= PAR3_MAX_DISTANCE) && !forceShowSectorInPar3;
@@ -722,7 +721,7 @@
         if (!isTargetLocked) {
           targetPosition = coords;
         } else {
-                    const activeOrigin = teePosition;
+          const activeOrigin = teePosition;
           const newBearing = getBearing(activeOrigin, coords);
           targetPosition = getDestinationPoint(activeOrigin[0], activeOrigin[1], lockedTargetDistance, newBearing);
           targetTouchMarker.setLngLat(targetPosition);
@@ -944,7 +943,7 @@
       };
     };
 
-        function renderStrokesGainedHTML(distTeeMeters, distGreenMeters, directHoleMeters) {
+    function renderStrokesGainedHTML(distTeeMeters, distGreenMeters, directHoleMeters) {
       if (!distTeeMeters || distGreenMeters === undefined || distGreenMeters === null) return "SG: +0.0 (+0.0 / +0.0)";
       
       const totalDirectDist = directHoleMeters || calculateDistance(teePosition, greenPosition);
@@ -970,7 +969,7 @@
       return `SG: ${fmtValue(sgFairway)} (${fmtValue(sgRough)} / ${fmtValue(sgSand)})`;
     }
 
-        function drawCanvasOverlay() {
+    function drawCanvasOverlay() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       const activeOrigin = teePosition;
@@ -1158,7 +1157,6 @@
 
           ctx.textAlign = 'center';
 
-          // Lasketaan teksti-osan leveyksiä keskitettyä asettelua varten
           let fullWidth = ctx.measureText(plPrefix).width + ctx.measureText(plValueStr).width;
           let hasGust = includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1;
           
@@ -1206,7 +1204,6 @@
         const distTee = calculateDistance(activeOrigin, activeTarget);
         const bearing = getBearing(activeOrigin, activeTarget);
 
-        // SEKTORIN RUNGOISEN VIIVAT
         ctx.beginPath();
         ctx.moveTo(pTee.x, pTee.y);
         ctx.lineTo(pTarget.x, pTarget.y);
@@ -1214,7 +1211,6 @@
         ctx.lineWidth = 2;
         ctx.stroke();
 
-        // SEKTORIN NUOLI
         const pArrowEnd = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 50, bearing));
         const pLeftTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing + 1.6));
         const pRightTip = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 45, bearing - 1.6));
@@ -1240,7 +1236,6 @@
         drawSectorConeOnCanvas(activeOrigin, distTee, bearing, 0.2222, false);
         drawSectorConeOnCanvas(activeOrigin, distTee, bearing, 0.1481, true);
 
-        // PUNAINEN KATKOVIIVA SEKTORISTA LIPULLE
         ctx.beginPath();
         ctx.moveTo(pTarget.x, pTarget.y);
         ctx.lineTo(pGreen.x, pGreen.y);
@@ -1250,7 +1245,6 @@
         ctx.stroke();
         ctx.setLineDash([]);
 
-        // ETÄISYYS LIPULLE 20M SEKTORISTA ETEENPÄIN
         const point20mForward = getDestinationPoint(activeTarget[0], activeTarget[1], 20, targetToGreenBearing);
         const pDist20m = map.project(point20mForward);
         const distTargetToGreen = calculateDistance(activeTarget, greenPosition);
@@ -1264,7 +1258,6 @@
         ctx.fillText(`${distTargetToGreen}m`, pDist20m.x, pDist20m.y);
         ctx.textBaseline = 'alphabetic';
 
-        // MITTATEKSTIT SEKTORIN PÄÄSSÄ
         const textPosAt10m = getDestinationPoint(activeTarget[0], activeTarget[1], 10, bearing);
         const textPosRight2m = getDestinationPoint(textPosAt10m[0], textPosAt10m[1], 2, bearing + 90);
         const pTextPos = map.project(textPosRight2m);
@@ -1338,7 +1331,6 @@
         ctx.textAlign = 'left';
         ctx.fillText(`${distTee}m`, pTextPos.x, pTextPos.y + 12);
 
-        // LEVEYSTIETO SEKTORIN VASEMMAN KULMAN YLÄPUOLELLE HARMAALLA (ISOMPI LEVEYS / PIENEMPI LEVEYS)
         const deltaAngleWidth = Math.atan(0.2222 / 2) * (180 / Math.PI);
         const leftCornerGeo = getDestinationPoint(activeOrigin[0], activeOrigin[1], distTee, bearing - deltaAngleWidth);
         const pLeftCorner = map.project(leftCornerGeo);
@@ -1347,7 +1339,7 @@
         const widthInnerMeters = Math.round(distTee * 0.1481);
 
         ctx.font = 'bold 15px Arial';
-        ctx.fillStyle = '#cbd5e1'; // Harmaa sävy
+        ctx.fillStyle = '#cbd5e1'; 
         ctx.textAlign = 'left';
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 5;
@@ -1355,7 +1347,6 @@
 
         ctx.shadowBlur = 0;
 
-        // KORKEUSERON BADGE
         if (teeElevationMeters !== undefined && targetElevationMeters !== undefined) {
           const diffTeeTarget = Math.round(targetElevationMeters - teeElevationMeters);
           const pElevationPos = map.project(getDestinationPoint(activeTarget[0], activeTarget[1], 0, bearing));
@@ -1366,7 +1357,6 @@
         const step = isZoomedIn ? 10 : 20;
         const deltaAngle = Math.atan(0.2222 / 2) * (180 / Math.PI);
 
-        // KAARIVIIVAT JA KAAREN ETÄISYYSLUVUT SEKÄ AVAUKSEN SG-ARVO SEKTORIN SISÄLLÄ
         if (distTee >= 140) {
           const directHoleDist = calculateDistance(activeOrigin, greenPosition);
           
@@ -1383,14 +1373,12 @@
             ctx.lineWidth = 1.2;
             ctx.stroke();
 
-            // Vasen puoli -> TIILTÄ LYÖTY AVAUKSEN SG-ARVO
             const quarterLeftAngle = bearing - (deltaAngle / 2);
             const pSgSinglePos = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterLeftAngle));
 
             const centerPtArc = getDestinationPoint(activeOrigin[0], activeOrigin[1], d, bearing);
             const remToGreen = calculateDistance(centerPtArc, greenPosition);
             
-            // Huomioidaan suora etäisyys tiiltä lipulle
             const sgSingle = calculateTeeTeeSgSingle(d, remToGreen, directHoleDist);
 
             ctx.font = 'bold 12px Arial';
@@ -1400,7 +1388,6 @@
             ctx.shadowBlur = 4;
             ctx.fillText(sgSingle.text, pSgSinglePos.x, pSgSinglePos.y - 4);
 
-            // Oikea puoli -> KAAREN ETÄISYYSMITTA
             const quarterRightAngle = bearing + (deltaAngle / 2);
             const pArcDist = map.project(getDestinationPoint(activeOrigin[0], activeOrigin[1], d, quarterRightAngle));
 
@@ -1449,7 +1436,7 @@
       ctx.setLineDash([]);
     }
 
-        function totalIsPar3() {
+    function totalIsPar3() {
       const activeOrigin = userGPSPosition || teePosition;
       return calculateDistance(activeOrigin, greenPosition) <= PAR3_MAX_DISTANCE && !forceShowSectorInPar3;
     }
@@ -1536,7 +1523,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.56.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.75.0' }
         });
         const results = await response.json();
 
@@ -1716,7 +1703,7 @@
       updateModeButtonsUI();
     }
 
-        function toggleTargetMode(e) {
+    function toggleTargetMode(e) {
       triggerButtonGuard(e);
 
       const activeOrigin = userGPSPosition || teePosition;
@@ -1724,7 +1711,6 @@
       const isPar3 = totalDist <= PAR3_MAX_DISTANCE;
 
       if (isPar3) {
-        // Par 3 -tilassa tähtäyspainike kytkee sektorin näkyviin / pois
         forceShowSectorInPar3 = !forceShowSectorInPar3;
         currentMode = 'target';
         isTargetLocked = false;
@@ -1746,7 +1732,7 @@
       updateCalculations();
     }
 
-        function toggleGPS(e) {
+    function toggleGPS(e) {
       triggerButtonGuard(e);
       const gpsBtn = document.getElementById('btn-gps-toggle');
       const markBtn = document.getElementById('btn-mark-ball');
@@ -1783,8 +1769,6 @@
             gpsBtn.classList.add('gps-active');
             markBtn.style.display = "block";
 
-            // Huom: Kävellessä GPS päivittää VAIN omaa sinistä merkkiä (userGPSPosition),
-            // eikä se nollaa tai siirrä asetettua sektoria tai tiipaikkaa!
             drawCanvasOverlay();
           },
           function(error) {
@@ -1802,16 +1786,14 @@
         teePosition = userGPSPosition;
         teeMarker.setLngLat(teePosition);
         
-        forceShowSectorInPar3 = false; // Nollataan pakotettu sektori
+        forceShowSectorInPar3 = false;
         
         const distToGreen = calculateDistance(teePosition, greenPosition);
         const bearing = getBearing(teePosition, greenPosition);
 
         if (distToGreen <= PAR3_MAX_DISTANCE) {
-          // Par 3 / Lähestymismatka: Sektori piilotetaan, suunnataan lippua kohti
           targetPosition = greenPosition;
         } else {
-          // Väylälyönti: Suunnatataan sektori lipun suuntaan vakiokohdistuksella
           const targetDist = Math.min(270, distToGreen * 0.7);
           targetPosition = getDestinationPoint(teePosition[0], teePosition[1], targetDist, bearing);
         }
