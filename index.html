@@ -452,7 +452,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.56.0</div>
+    <div class="vertical-version-tag">v6.57.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -497,8 +497,8 @@
       </div>
     </div>
 
-    <div class="map-controls-right" id="map-controls">
-      <button id="btn-set-tee-gps" class="btn-gps-tee" onclick="setTeeToGPS(event)">Aseta Tii GPS 📍</button>
+        <div class="map-controls-right" id="map-controls">
+      <button id="btn-mark-ball" class="btn-gps-tee" onclick="markBallToGPS(event)" title="Aseta lyöntipaikka pallolle">Mark 📍</button>
 
       <div class="icon-buttons-group">
         <button id="btn-gps-toggle" class="icon-btn btn-gps" onclick="toggleGPS(event)" title="Sijainti / Satelliitti">🛰️</button>
@@ -529,8 +529,11 @@
     </div>
   </div>
 
-  <script>
-    const APP_VERSION = "v6.56.0";
+    <script>
+    const APP_VERSION = "v6.57.0";
+    const PAR3_MAX_DISTANCE = 200; // Siirretään tulevaisuudessa asetuksiin
+    let forceShowSectorInPar3 = false; // Käyttäjä voi pakottaa sektorin näkyviin Par 3 -tilassa painamalla 🎯
+
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
     let googleApiBlocked = false;
 
@@ -658,8 +661,14 @@
       return el;
     }
 
+        function isPar3Active() {
+      const activeOrigin = teePosition;
+      const totalDist = calculateDistance(activeOrigin, greenPosition);
+      return (totalDist <= PAR3_MAX_DISTANCE) && !forceShowSectorInPar3;
+    }
+
     function autoPositionTarget() {
-      const activeOrigin = userGPSPosition || teePosition;
+      const activeOrigin = teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
       const bearing = getBearing(activeOrigin, greenPosition);
       const targetDist = Math.min(270, totalDist * 0.7);
@@ -707,7 +716,7 @@
         if (!isTargetLocked) {
           targetPosition = coords;
         } else {
-          const activeOrigin = userGPSPosition || teePosition;
+                    const activeOrigin = teePosition;
           const newBearing = getBearing(activeOrigin, coords);
           targetPosition = getDestinationPoint(activeOrigin[0], activeOrigin[1], lockedTargetDistance, newBearing);
           targetTouchMarker.setLngLat(targetPosition);
@@ -744,9 +753,9 @@
       }, 500);
     });
 
-    function setHoleDefaultView(e) {
+        function setHoleDefaultView(e) {
       if (e) triggerButtonGuard(e);
-      const activeOrigin = userGPSPosition || teePosition;
+      const activeOrigin = teePosition;
       const bearing = getBearing(activeOrigin, greenPosition);
 
       const bounds = new maplibregl.LngLatBounds();
@@ -760,9 +769,9 @@
       });
     }
 
-    function triggerElevationUpdate() {
-      const activeOrigin = userGPSPosition || teePosition;
-      const activeTargetPos = totalIsPar3() ? greenPosition : (targetPosition || greenPosition);
+        function triggerElevationUpdate() {
+      const activeOrigin = teePosition;
+      const activeTargetPos = isPar3Active() ? greenPosition : (targetPosition || greenPosition);
       
       const dist = calculateDistance(activeOrigin, activeTargetPos);
       if (dist > 1000) {
@@ -929,10 +938,10 @@
       };
     };
 
-    function renderStrokesGainedHTML(distTeeMeters, distGreenMeters, directHoleMeters) {
+        function renderStrokesGainedHTML(distTeeMeters, distGreenMeters, directHoleMeters) {
       if (!distTeeMeters || distGreenMeters === undefined || distGreenMeters === null) return "SG: +0.0 (+0.0 / +0.0)";
       
-      const totalDirectDist = directHoleMeters || calculateDistance(userGPSPosition || teePosition, greenPosition);
+      const totalDirectDist = directHoleMeters || calculateDistance(teePosition, greenPosition);
       const yardsDirectTee = totalDirectDist * 1.09361;
       const yardsRem = distGreenMeters * 1.09361;
 
@@ -955,12 +964,12 @@
       return `SG: ${fmtValue(sgFairway)} (${fmtValue(sgRough)} / ${fmtValue(sgSand)})`;
     }
 
-    function drawCanvasOverlay() {
+        function drawCanvasOverlay() {
       ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-      const activeOrigin = userGPSPosition || teePosition;
+      const activeOrigin = teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
-      const isPar3 = totalDist < 200;
+      const isPar3 = isPar3Active();
 
       const pTee = map.project(activeOrigin);
       const pGreen = map.project(greenPosition);
@@ -1434,9 +1443,9 @@
       ctx.setLineDash([]);
     }
 
-    function totalIsPar3() {
+        function totalIsPar3() {
       const activeOrigin = userGPSPosition || teePosition;
-      return calculateDistance(activeOrigin, greenPosition) < 200;
+      return calculateDistance(activeOrigin, greenPosition) <= PAR3_MAX_DISTANCE && !forceShowSectorInPar3;
     }
 
     function cycleCompassMode(e) {
@@ -1701,19 +1710,29 @@
       updateModeButtonsUI();
     }
 
-    function toggleTargetMode(e) {
+        function toggleTargetMode(e) {
       triggerButtonGuard(e);
 
-      if (currentMode !== 'target') {
+      const activeOrigin = userGPSPosition || teePosition;
+      const totalDist = calculateDistance(activeOrigin, greenPosition);
+      const isPar3 = totalDist <= PAR3_MAX_DISTANCE;
+
+      if (isPar3) {
+        // Par 3 -tilassa tähtäyspainike kytkee sektorin näkyviin / pois
+        forceShowSectorInPar3 = !forceShowSectorInPar3;
         currentMode = 'target';
         isTargetLocked = false;
       } else {
-        isTargetLocked = !isTargetLocked;
+        if (currentMode !== 'target') {
+          currentMode = 'target';
+          isTargetLocked = false;
+        } else {
+          isTargetLocked = !isTargetLocked;
 
-        if (isTargetLocked) {
-          const activeOrigin = userGPSPosition || teePosition;
-          const activeTarget = targetPosition || greenPosition;
-          lockedTargetDistance = calculateDistance(activeOrigin, activeTarget);
+          if (isTargetLocked) {
+            const activeTarget = targetPosition || greenPosition;
+            lockedTargetDistance = calculateDistance(activeOrigin, activeTarget);
+          }
         }
       }
 
@@ -1721,10 +1740,10 @@
       updateCalculations();
     }
 
-    function toggleGPS(e) {
+        function toggleGPS(e) {
       triggerButtonGuard(e);
       const gpsBtn = document.getElementById('btn-gps-toggle');
-      const setTeeBtn = document.getElementById('btn-set-tee-gps');
+      const markBtn = document.getElementById('btn-mark-ball');
 
       if (watchId !== null) {
         navigator.geolocation.clearWatch(watchId);
@@ -1733,8 +1752,7 @@
         if (userMarker) userMarker.remove();
         userMarker = null;
         gpsBtn.classList.remove('gps-active');
-        setTeeBtn.style.display = "none";
-        autoPositionTarget();
+        markBtn.style.display = "none";
         updateCalculations();
       } else {
         if (!navigator.geolocation) {
@@ -1757,15 +1775,11 @@
             }
 
             gpsBtn.classList.add('gps-active');
-            setTeeBtn.style.display = "block";
-            
-            autoPositionTarget();
-            updateCalculations();
+            markBtn.style.display = "block";
 
-            clearTimeout(gpsDebounceTimeout);
-            gpsDebounceTimeout = setTimeout(() => {
-              triggerElevationUpdate();
-            }, 2500);
+            // Huom: Kävellessä GPS päivittää VAIN omaa sinistä merkkiä (userGPSPosition),
+            // eikä se nollaa tai siirrä asetettua sektoria tai tiipaikkaa!
+            drawCanvasOverlay();
           },
           function(error) {
             alert("Sijainnin hakeminen epäonnistui.");
@@ -1776,15 +1790,32 @@
       }
     }
 
-    function setTeeToGPS(e) {
+    function markBallToGPS(e) {
       triggerButtonGuard(e);
       if (userGPSPosition) {
         teePosition = userGPSPosition;
         teeMarker.setLngLat(teePosition);
-        autoPositionTarget();
+        
+        forceShowSectorInPar3 = false; // Nollataan pakotettu sektori
+        
+        const distToGreen = calculateDistance(teePosition, greenPosition);
+        const bearing = getBearing(teePosition, greenPosition);
+
+        if (distToGreen <= PAR3_MAX_DISTANCE) {
+          // Par 3 / Lähestymismatka: Sektori piilotetaan, suunnataan lippua kohti
+          targetPosition = greenPosition;
+        } else {
+          // Väylälyönti: Suunnatataan sektori lipun suuntaan vakiokohdistuksella
+          const targetDist = Math.min(270, distToGreen * 0.7);
+          targetPosition = getDestinationPoint(teePosition[0], teePosition[1], targetDist, bearing);
+        }
+
+        if (targetTouchMarker) targetTouchMarker.setLngLat(targetPosition);
+
         fetchWeatherData();
         updateCalculations();
         triggerElevationUpdate();
+        setHoleDefaultView();
       }
     }
 
@@ -1986,9 +2017,9 @@
     }
 
     function updateBottomPanelMetrics() {
-      const activeOrigin = userGPSPosition || teePosition;
+            const activeOrigin = userGPSPosition || teePosition;
       const totalDistToGreen = calculateDistance(activeOrigin, greenPosition);
-      const isPar3 = totalDistToGreen < 200;
+      const isPar3 = totalDistToGreen <= PAR3_MAX_DISTANCE && !forceShowSectorInPar3;
 
       const activeTarget = isPar3 ? greenPosition : (targetPosition || greenPosition);
       const distTee = calculateDistance(activeOrigin, activeTarget);
@@ -2074,12 +2105,12 @@
       document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
-    function updateCalculations() {
+        function updateCalculations() {
       const activeOrigin = userGPSPosition || teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
       document.getElementById('dist-total').innerText = totalDist;
 
-      const isPar3 = totalDist < 200;
+      const isPar3 = totalDist <= PAR3_MAX_DISTANCE && !forceShowSectorInPar3;
 
       if (isPar3) {
         if (targetTouchMarker) targetTouchMarker.remove();
