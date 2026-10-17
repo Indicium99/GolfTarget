@@ -56,6 +56,8 @@
       position: absolute;
       top: 0;
       left: 0;
+      bottom: 0;
+      right: 0;
       background-color: #0f172a;
     }
 
@@ -315,7 +317,7 @@
     #info-panel {
       position: absolute;
       left: 8px;
-      bottom: calc(env(safe-area-inset-bottom, 0px) + 12px);
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 8px); /* Nosto 8px turvaalueesta */
       top: auto;
       width: auto;
       height: auto;
@@ -533,7 +535,7 @@
 
 
     <script>
-    const APP_VERSION = "v6.65.0";
+    const APP_VERSION = "v6.66.0";
     const PAR3_MAX_DISTANCE = 200; // Siirretään tulevaisuudessa asetuksiin
     let forceShowSectorInPar3 = false; // Käyttäjä voi pakottaa sektorin näkyviin Par 3 -tilassa painamalla 🎯
 
