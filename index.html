@@ -314,8 +314,8 @@
 
     #info-panel {
       position: absolute;
-      top: calc(40% + 45px);
       left: 8px;
+      top: calc(40% + 60px);
       width: auto;
       height: auto;
       padding: 0;
@@ -329,7 +329,7 @@
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 6px;
+      gap: 8px;
       background: rgba(15, 23, 42, 0.92);
       padding: 6px 8px;
       border-radius: 8px;
@@ -345,14 +345,17 @@
       font-size: 12px;
       font-weight: bold;
       color: #ffffff;
-      line-height: 1.25;
-      white-space: nowrap;
+      line-height: 1.2;
     }
 
     .metric-icon {
-      font-size: 15px;
-      line-height: 1;
-      margin-bottom: 2px;
+      font-size: 14px;
+      margin-bottom: 1px;
+    }
+
+    .metric-val {
+      font-size: 12px;
+      white-space: nowrap;
     }
 
     .toggleable-factor {
@@ -509,20 +512,21 @@
     <div id="info-panel">
       <div class="metrics-container">
         <div id="elevation-toggle" class="toggleable-factor active metric-item" onclick="toggleFactor('elevation', event)">
-          <span class="metric-icon">📐</span>
-          <span id="elevation-diff">-</span>
+          <div class="metric-icon">📐</div>
+          <div class="metric-val"><span id="elevation-diff">-</span></div>
         </div>
         <div id="wind-toggle" class="toggleable-factor active metric-item" onclick="toggleFactor('wind', event)">
-          <span class="metric-icon">💨</span>
-          <span id="wind-text">-</span>
+          <div class="metric-icon">💨</div>
+          <div class="metric-val" id="wind-text">-</div>
         </div>
         <div id="temp-toggle" class="toggleable-factor active metric-item" onclick="toggleFactor('temp', event)">
-          <span class="metric-icon">🌡️</span>
-          <span id="temp-text">-</span>
+          <div class="metric-icon">🌡️</div>
+          <div class="metric-val" id="temp-text">-</div>
         </div>
       </div>
     </div>
   </div>
+
 
     <script>
     const APP_VERSION = "v6.60.1";

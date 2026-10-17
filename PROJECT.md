@@ -3,7 +3,8 @@
 Tämä tiedosto toimii projektin pääohjeistuksena ja muistiona kehittäjälle ja tekoälyavustajalle (Gemini/VS Code). Lue tämä tiedosto aina uuden istunnon alussa ymmärtääksesi sovelluksen tarkoituksen, toimintaperiaatteet ja säännöt.
 
 > ⚠️ **TÄRKEÄ SÄÄNTÖ UUDEN CHATIN ALOITUKSEEN:**  
-> Aina kun käyttäjä aloittaa uuden keskustelun/chatin, tekoälyn tulee **välittömästi lukea ja huomioida tiedostot `PROJECT.md` ja `index.html`**. Työskentelyä ja kehitystä jatketaan aina suoraan näiden tiedostojen ja muistiossa olevan ToDo-listan pohjalta ilman, että käyttäjältä kysytään mitä olimme tekemässä.
+> Aina kun käyttäjä aloittaa uuden keskustelun/chatin, tekoälyn tulee **välittömästi lukea ja huomioida tiedostot `PROJECT.md` ja `index.html`**. Työskentelyä ja kehitystä jatketaan aina suoraan näiden tiedostojen ja muistiossa olevan ToDo-listan pohjalta ilman, että käyttäjältä kysytään mitä olimme tekemässä. 
+>Kun teet muutosehdotuksen koodiin, niin jotta muutos tehdään oikeaan kohtaan, niin näytä selkeästi ennen ja jälkeen 2 riviä säilytettävää koodia
 
 ---
 
