@@ -312,13 +312,13 @@
 
     .active-mode { outline: 2.5px solid #ffffff; }
 
- #info-panel {
+     #info-panel {
       position: absolute;
       bottom: 0;
       left: 0;
       width: 100%;
       height: auto;
-      padding: 2px 6px max(2px, env(safe-area-inset-bottom, 0px)) 6px;
+      padding: 2px 4px 0px 4px;
       box-sizing: border-box;
       background-color: rgba(15, 23, 42, 0.95);
       display: flex;
@@ -333,9 +333,10 @@
       flex-direction: column;
       gap: 2px;
       background: #1e293b;
-      padding: 3px 8px;
-      border-radius: 8px;
+      padding: 2px 6px;
+      border-radius: 6px 6px 0 0;
       border: 1px solid #334155;
+      border-bottom: none;
     }
 
     .metric-line {
