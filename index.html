@@ -312,56 +312,53 @@
 
     .active-mode { outline: 2.5px solid #ffffff; }
 
-     #info-panel {
+    #info-panel {
       position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
+      top: calc(40% + 45px);
+      left: 8px;
+      width: auto;
       height: auto;
-      padding: 2px 4px 0px 4px;
-      box-sizing: border-box;
-      background-color: rgba(15, 23, 42, 0.95);
+      padding: 0;
+      background-color: transparent;
       display: flex;
       flex-direction: column;
-      justify-content: center;
-      border-top: 2px solid #0284c7;
+      border-top: none;
       z-index: 2000;
     }
 
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 2px;
-      background: #1e293b;
-      padding: 2px 6px;
-      border-radius: 6px 6px 0 0;
-      border: 1px solid #334155;
-      border-bottom: none;
+      gap: 6px;
+      background: rgba(15, 23, 42, 0.92);
+      padding: 6px 8px;
+      border-radius: 8px;
+      border: 1.5px solid #0284c7;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.6);
+      align-items: flex-start;
     }
 
-    .metric-line {
+    .metric-item {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 16px;
+      flex-direction: column;
+      align-items: flex-start;
+      font-size: 12px;
       font-weight: bold;
       color: #ffffff;
+      line-height: 1.25;
+      white-space: nowrap;
     }
 
-    .metric-subline {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
+    .metric-icon {
       font-size: 15px;
-      color: #ffffff;
-      border-top: 1px dashed #475569;
-      padding-top: 3px;
+      line-height: 1;
+      margin-bottom: 2px;
     }
 
     .toggleable-factor {
       cursor: pointer;
-      padding: 2px 6px;
-      border-radius: 6px;
+      padding: 2px 4px;
+      border-radius: 4px;
       border: 1px solid transparent;
       transition: all 0.2s ease;
       user-select: none;
@@ -511,20 +508,17 @@
 
     <div id="info-panel">
       <div class="metrics-container">
-        <div class="metric-line">
-          <span>Plays like <span id="plays-like-val" style="color:#ffffff; font-weight:bold;">-</span> <span id="plays-like-gust-val" style="font-size: 15px; font-weight: normal;"></span></span>
-          <span id="elevation-toggle" class="toggleable-factor active" onclick="toggleFactor('elevation', event)">
-            <span>📐 <span id="elevation-diff">-</span></span>
-          </span>
+        <div id="elevation-toggle" class="toggleable-factor active metric-item" onclick="toggleFactor('elevation', event)">
+          <span class="metric-icon">📐</span>
+          <span id="elevation-diff">-</span>
         </div>
-
-        <div class="metric-subline">
-          <span id="wind-toggle" class="toggleable-factor active" onclick="toggleFactor('wind', event)">
-            <span id="wind-text">💨 -</span>
-          </span>
-          <span id="temp-toggle" class="toggleable-factor active" onclick="toggleFactor('temp', event)">
-            <span id="temp-text">🌡️ -</span>
-          </span>
+        <div id="wind-toggle" class="toggleable-factor active metric-item" onclick="toggleFactor('wind', event)">
+          <span class="metric-icon">💨</span>
+          <span id="wind-text">-</span>
+        </div>
+        <div id="temp-toggle" class="toggleable-factor active metric-item" onclick="toggleFactor('temp', event)">
+          <span class="metric-icon">🌡️</span>
+          <span id="temp-text">-</span>
         </div>
       </div>
     </div>
@@ -2018,7 +2012,7 @@
     }
 
     function updateBottomPanelMetrics() {
-            const activeOrigin = userGPSPosition || teePosition;
+      const activeOrigin = userGPSPosition || teePosition;
       const totalDistToGreen = calculateDistance(activeOrigin, greenPosition);
       const isPar3 = totalDistToGreen <= PAR3_MAX_DISTANCE && !forceShowSectorInPar3;
 
@@ -2031,35 +2025,24 @@
 
       const angleRad = (windToDirection - shotBearing) * Math.PI / 180;
       const tailwindComponent = Math.cos(angleRad) * currentWindSpeed;
-      const gustTailwindComponent = Math.cos(angleRad) * currentWindGusts;
 
       const distanceRatio = distTee / 200; 
 
       let windDistanceImpact = 0;
-      let gustDistanceImpact = 0;
-
       if (includeWind) {
         if (tailwindComponent < 0) {
           windDistanceImpact = Math.round(-tailwindComponent * 1.65 * distanceRatio);
-          gustDistanceImpact = Math.round(-gustTailwindComponent * 1.65 * distanceRatio);
         } else {
           windDistanceImpact = Math.round(-tailwindComponent * 0.90 * distanceRatio);
-          gustDistanceImpact = Math.round(-gustTailwindComponent * 0.90 * distanceRatio);
         }
       }
 
       const tempDiff = currentTempC - 20;
       const tempDistanceImpact = includeTemp ? Math.round(-(tempDiff * 0.002) * distTee) : 0; 
 
-      const elevationImpact = includeElevation ? Math.round(currentElevationDiffMeters * 1.15) : 0;
-
-      const playsLikeDistance = Math.round(distTee + windDistanceImpact + tempDistanceImpact + elevationImpact);
-      const playsLikeGustDistance = Math.round(distTee + gustDistanceImpact + tempDistanceImpact + elevationImpact);
-
       let windImpactFormatted = windDistanceImpact >= 0 ? `+${windDistanceImpact}m` : `${windDistanceImpact}m`;
 
       const windSpeedInt = Math.round(currentWindSpeed);
-      const gustSpeedInt = Math.round(currentWindGusts);
 
       let windValClass = "val-neutral";
       if (tailwindComponent > 0.2) windValClass = "val-shorter";
@@ -2071,7 +2054,7 @@
 
       const compassStr = getCompassDirectionText(currentWindDirection);
 
-      const windText = `💨 <span class="${windValClass}">${compassStr} ${windDirectionLabel} ${windSpeedInt} m/s (${windImpactFormatted})</span>`;
+      const windText = `<span class="${windValClass}">${compassStr} ${windDirectionLabel} ${windSpeedInt} m/s (${windImpactFormatted})</span>`;
 
       let tempValClass = "val-neutral";
       if (tempDistanceImpact > 0) tempValClass = "val-longer";
@@ -2080,33 +2063,13 @@
       const tempImpactFormatted = tempDistanceImpact >= 0 ? `+${tempDistanceImpact}m` : `${tempDistanceImpact}m`;
 
       document.getElementById('dist-total').innerText = totalDistToGreen;
-      
       document.getElementById('sg-val').innerHTML = renderStrokesGainedHTML(distTee, distGreen, totalDistToGreen);
 
-      const playsLikeElem = document.getElementById('plays-like-val');
-      
-      let playsLikeClass = "val-neutral";
-      if (playsLikeDistance > distTee) playsLikeClass = "val-longer";
-      else if (playsLikeDistance < distTee) playsLikeClass = "val-shorter";
-
-      playsLikeElem.innerHTML = `<span class="${playsLikeClass}">${playsLikeDistance}m</span>`;
-
-      const gustElem = document.getElementById('plays-like-gust-val');
-      if (includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1) {
-        let gustClass = "val-neutral";
-        if (playsLikeGustDistance > distTee) gustClass = "val-longer";
-        else if (playsLikeGustDistance < distTee) gustClass = "val-shorter";
-
-        gustElem.innerHTML = `(<span class="${gustClass}">${playsLikeGustDistance}m</span> ${gustSpeedInt} m/s)`;
-      } else {
-        gustElem.innerText = '';
-      }
-
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
+      document.getElementById('temp-text').innerHTML = `<span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
-        function updateCalculations() {
+    function updateCalculations() {
       const activeOrigin = userGPSPosition || teePosition;
       const totalDist = calculateDistance(activeOrigin, greenPosition);
       document.getElementById('dist-total').innerText = totalDist;
