@@ -312,13 +312,13 @@
 
     .active-mode { outline: 2.5px solid #ffffff; }
 
-                                                                #info-panel {
+ #info-panel {
       position: absolute;
       bottom: 0;
       left: 0;
       width: 100%;
       height: auto;
-      padding: 3px 10px env(safe-area-inset-bottom, 0px) 10px;
+      padding: 2px 6px max(2px, env(safe-area-inset-bottom, 0px)) 6px;
       box-sizing: border-box;
       background-color: rgba(15, 23, 42, 0.95);
       display: flex;
@@ -331,9 +331,9 @@
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 2px;
       background: #1e293b;
-      padding: 5px 10px;
+      padding: 3px 8px;
       border-radius: 8px;
       border: 1px solid #334155;
     }
@@ -530,7 +530,7 @@
   </div>
 
     <script>
-    const APP_VERSION = "v6.59.0";
+    const APP_VERSION = "v6.60.0";
     const PAR3_MAX_DISTANCE = 200; // Siirretään tulevaisuudessa asetuksiin
     let forceShowSectorInPar3 = false; // Käyttäjä voi pakottaa sektorin näkyviin Par 3 -tilassa painamalla 🎯
 
