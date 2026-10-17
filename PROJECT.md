@@ -9,7 +9,7 @@ Tämä tiedosto toimii projektin pääohjeistuksena ja muistiona kehittäjälle 
 ---
 
 ## 1. Sovelluksen Kuvaus ja Tarkoitus
-- **Nimi:** Master Golf - Väylä- ja Korkeusmittari (v6.59.0)
+- **Nimi:** Master Golf - Väylä- ja Korkeusmittari (v6.64.0)
 - **Tarkoitus:** Mobiilioptimoitu (PWA) golfin etäisyys-, sektori-, sää-, korkeus- ja lyöntianalyysimittari (Strokes Gained / SG).
 - **Käyttökokemus:** Suunniteltu käytettäväksi älypuhelimella suoraan kentällä (helppokäyttöiset painikkeet, selkeät kontrastit, kosketusnäyttöystävällinen).
 
