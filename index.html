@@ -452,7 +452,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.54.0</div>
+    <div class="vertical-version-tag">v6.55.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -530,7 +530,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v6.54.0";
+    const APP_VERSION = "v6.55.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
     let googleApiBlocked = false;
 
@@ -1100,7 +1100,7 @@
 
         drawElevationBadge(pLabelTeeGreen.x, pLabelTeeGreen.y, diffTeeGreen);
 
-        // ETÄISYYSTEKSTI VIIVAN PUOLIVÄLISSÄ (PAR 3)
+        // ETÄISYYS- JA PL-TEKSTI VIIVAN PUOLIVÄLISSÄ (PAR 3)
         const midPointGeo = getDestinationPoint(activeOrigin[0], activeOrigin[1], totalDist / 2, bearingPar3);
         const pMid = map.project(midPointGeo);
 
@@ -1110,9 +1110,6 @@
         ctx.shadowColor = '#000000';
         ctx.shadowBlur = 6;
         ctx.font = 'bold 20px Arial';
-        ctx.fillStyle = '#ffffff';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
 
         if (isZoomedIn) {
           const playsLikeDist = getCalculatedPlaysLikeDistance(totalDist);
@@ -1121,13 +1118,72 @@
           if (playsLikeDist > totalDist) mainPlColor = '#dc2626';     
           else if (playsLikeDist < totalDist) mainPlColor = '#16a34a'; 
 
+          const angleRad = (currentWindDirection + 180 - bearingPar3) * Math.PI / 180;
+          const gustTailwind = Math.cos(angleRad) * currentWindGusts;
+          const distanceRatio = totalDist / 200;
+          let gustDistanceImpact = 0;
+          if (includeWind) {
+            if (gustTailwind < 0) gustDistanceImpact = Math.round(-gustTailwind * 1.65 * distanceRatio);
+            else gustDistanceImpact = Math.round(-gustTailwind * 0.90 * distanceRatio);
+          }
+          const tempDiff = currentTempC - 20;
+          const tempImpact = includeTemp ? Math.round(-(tempDiff * 0.002) * totalDist) : 0;
+          const elevImpact = includeElevation ? Math.round(currentElevationDiffMeters * 1.15) : 0;
+          const playsLikeGustDist = Math.round(totalDist + gustDistanceImpact + tempImpact + elevImpact);
+
+          let gustPlColor = '#ffffff';
+          if (playsLikeGustDist > totalDist) gustPlColor = '#dc2626';     
+          else if (playsLikeGustDist < totalDist) gustPlColor = '#16a34a'; 
+
+          const windSpeedInt = Math.round(currentWindSpeed);
+          const gustSpeedInt = Math.round(currentWindGusts);
+
+          const plPrefix = "PL ";
+          const plValueStr = `${playsLikeDist}m`;
+
+          ctx.textAlign = 'center';
+
+          // Lasketaan teksti-osan leveyksiä keskitettyä asettelua varten
+          let fullWidth = ctx.measureText(plPrefix).width + ctx.measureText(plValueStr).width;
+          let hasGust = includeWind && Math.abs(gustSpeedInt - windSpeedInt) >= 1;
+          
+          let openParen = " (";
+          let gustValStr = `${playsLikeGustDist}m`;
+          let gustSpeedStr = ` ${gustSpeedInt}m/s)`;
+
+          if (hasGust) {
+            fullWidth += ctx.measureText(openParen).width + ctx.measureText(gustValStr).width + ctx.measureText(gustSpeedStr).width;
+          }
+
+          let startX = pMid.x - (fullWidth / 2);
+          ctx.textAlign = 'left';
+
+          ctx.fillStyle = '#ffffff';
+          ctx.fillText(plPrefix, startX, pMid.y - 10);
+          startX += ctx.measureText(plPrefix).width;
+
           ctx.fillStyle = mainPlColor;
-          ctx.fillText(`PL ${playsLikeDist}m`, pMid.x, pMid.y - 12);
+          ctx.fillText(plValueStr, startX, pMid.y - 10);
+          startX += ctx.measureText(plValueStr).width;
+
+          if (hasGust) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(openParen, startX, pMid.y - 10);
+            startX += ctx.measureText(openParen).width;
+
+            ctx.fillStyle = gustPlColor;
+            ctx.fillText(gustValStr, startX, pMid.y - 10);
+            startX += ctx.measureText(gustValStr).width;
+
+            ctx.fillStyle = '#ffffff';
+            ctx.fillText(gustSpeedStr, startX, pMid.y - 10);
+          }
         }
 
+        ctx.font = 'bold 20px Arial';
         ctx.fillStyle = '#ffffff';
+        ctx.textAlign = 'center';
         ctx.fillText(`${totalDist}m`, pMid.x, pMid.y + (isZoomedIn ? 12 : 0));
-        ctx.textBaseline = 'alphabetic';
         ctx.shadowBlur = 0;
 
       } else {
@@ -1465,7 +1521,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.54.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.55.0' }
         });
         const results = await response.json();
 
@@ -2015,7 +2071,7 @@
       }
 
       document.getElementById('wind-text').innerHTML = windText;
-      document.getElementById('temp-text').innerHTML = `🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
+      document.getElementById('temp-text').innerHTML = `GI 🌡️ <span class="${tempValClass}">${currentTempC}°C (${tempImpactFormatted})</span>`;
     }
 
     function updateCalculations() {
