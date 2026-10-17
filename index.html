@@ -533,7 +533,7 @@
 
 
     <script>
-    const APP_VERSION = "v6.64.0";
+    const APP_VERSION = "v6.65.0";
     const PAR3_MAX_DISTANCE = 200; // Siirretään tulevaisuudessa asetuksiin
     let forceShowSectorInPar3 = false; // Käyttäjä voi pakottaa sektorin näkyviin Par 3 -tilassa painamalla 🎯
 
@@ -757,7 +757,7 @@
       }, 500);
     });
 
-                        function setHoleDefaultView(e) {
+    function setHoleDefaultView(e) {
       if (e) triggerButtonGuard(e);
       const activeOrigin = teePosition;
       const bearing = getBearing(activeOrigin, greenPosition);
@@ -767,13 +767,13 @@
       bounds.extend(greenPosition);
 
       map.fitBounds(bounds, {
-        padding: { top: 110, bottom: 65, left: 25, right: 25 },
+        padding: { top: 110, bottom: 20, left: 25, right: 25 },
         bearing: bearing,
         duration: 800
       });
     }
 
-        function triggerElevationUpdate() {
+    function triggerElevationUpdate() {
       const activeOrigin = teePosition;
       const activeTargetPos = isPar3Active() ? greenPosition : (targetPosition || greenPosition);
       

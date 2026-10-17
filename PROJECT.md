@@ -4,12 +4,12 @@ Tämä tiedosto toimii projektin pääohjeistuksena ja muistiona kehittäjälle 
 
 > ⚠️ **TÄRKEÄ SÄÄNTÖ UUDEN CHATIN ALOITUKSEEN:**  
 > Aina kun käyttäjä aloittaa uuden keskustelun/chatin, tekoälyn tulee **välittömästi lukea ja huomioida tiedostot `PROJECT.md` ja `index.html`**. Työskentelyä ja kehitystä jatketaan aina suoraan näiden tiedostojen ja muistiossa olevan ToDo-listan pohjalta ilman, että käyttäjältä kysytään mitä olimme tekemässä. 
->Kun teet muutosehdotuksen koodiin, niin jotta muutos tehdään oikeaan kohtaan, niin näytä selkeästi ennen ja jälkeen 2 riviä säilytettävää koodia
+> Kun teet muutosehdotuksen koodiin, niin jotta muutos tehdään oikeaan kohtaan, niin näytä selkeästi ennen ja jälkeen 2 riviä säilytettävää koodia.
 
 ---
 
 ## 1. Sovelluksen Kuvaus ja Tarkoitus
-- **Nimi:** Master Golf - Väylä- ja Korkeusmittari (v6.64.0)
+- **Nimi:** Master Golf - Väylä- ja Korkeusmittari (v6.65.0)
 - **Tarkoitus:** Mobiilioptimoitu (PWA) golfin etäisyys-, sektori-, sää-, korkeus- ja lyöntianalyysimittari (Strokes Gained / SG).
 - **Käyttökokemus:** Suunniteltu käytettäväksi älypuhelimella suoraan kentällä (helppokäyttöiset painikkeet, selkeät kontrastit, kosketusnäyttöystävällinen).
 
@@ -40,19 +40,24 @@ Tämä tiedosto toimii projektin pääohjeistuksena ja muistiona kehittäjälle 
 ### 3.2 Lyöntisektorit ja Kaaret
 - **Sisäsektori (Inner):** Kapeampi hajontasektori (kerroin n. 0.1481 suhteessa etäisyyteen, katkoviiva).
 - **Ulkosektori (Outer):** Leveämpi hajontasektori (kerroin n. 0.2222 suhteessa etäisyyteen, yhtenäinen viiva).
-- **Etäisyyskaaret:** Piirretään 130 metristä alkaen 30 metrin välein sektorin sisälle.
+- **Etäisyyskaaret:** Piirretään 140 metristä alkaen 10m/20m välein sektorin sisälle.
 - **Päänuoli ja Mittamerkki (Badge):**
   - Nuoli osoittaa lyöntisuunnan.
-  - Infomerkki näyttää lyöntimatkan (m), korkeuseron (m) sekä jäljellä olevan matkan viheriölle (⛳ m).
+  - Infomerkki näyttää lyöntimatkan (m), korkeuseron (m, kokonaislukuna ilman desimaaleja) sekä jäljellä olevan matkan viheriölle (⛳ m).
 
-### 3.3 "Plays Like" -laskentalogiikka
+### 3.3 Infopaneeli ja Sää
+- **Sijoittelu:** Vasemmassa alakulmassa peittävillä tummilla korteilla (`#0f172a`), jotta teksti erottuu selkeästi kartasta.
+- **Tuulitieto:** Näytetään muodossa `💨 <Kompassi>` ylärivillä ja `<Nopeus> m/s (<Vaikutus>m)` alarivillä.
+- **Versionumero:** Hallitaan keskitetysti yhdestä JS-muuttujasta (`APP_VERSION`).
+
+### 3.4 "Plays Like" -laskentalogiikka
 Sovellus laskee efektiivisen suosituslyöntipituuden kaavalla:
 `Plays Like = Todellinen matka + Tuulivaikutus + Lämpötilavaikutus + Korkeusvaikutus`
 - **Tuuli:** Laskee vasta- tai myötätuulikomponentin kulman mukaan suhteessa lyöntisuuntaan.
 - **Lämpötila:** Vertailukohtana +20°C (kylmä ilma lyhentää palloa).
 - **Korkeusero:** Ylämäki lisää vaadittavaa mittaa, alamäki vähentää.
 
-### 3.4 Strokes Gained (SG) -laskenta
+### 3.5 Strokes Gained (SG) -laskenta
 - **Periaate:** Strokes Gained arvioi lyönnin arvoa suhteessa vertailutasoon.
 - **Kaava:** `SG = Odotusarvo(lähtöpaikka) - Odotusarvo(päätepaikka) - 1 lyönti`
 - **Toiminnot:** Tiilyönnin ja lähestymisen vertailu etäisyyden ja alustan mukaan (Väylä vs. Raffi/Bunkkeri).
@@ -62,7 +67,7 @@ Sovellus laskee efektiivisen suosituslyöntipituuden kaavalla:
 ## 4. Kehityssäännöt ja Hyvät Käytännöt (TÄRKEÄT SÄÄNNÖT TEKOÄLYLLE)
 1. **SUUNNITELMA ENNEN MUUTOKSIA:** Ennen kuin teet mitään muutoksia koodiin, esitä selkeä suunnitelma ja **hyväksytä se aina käyttäjällä**. Muutoksia koodiin saa tehdä vasta, kun käyttäjä on antanut hyväksynnän.
 2. **Pidä tiedostorakenne selkeänä:** Sovellus pidetään toistaiseksi ensisijaisesti `index.html`-tiedostossa ellei erikseen sovita modularisoinnista.
-3. **Versionumerointi:** Päivitä aina sovelluksen versiotunniste sekä HTML:n alapaneeliin että JS-muuttujaan `APP_VERSION`, kun teet toiminnallisia muutoksia.
+3. **Versionumerointi:** Päivitä aina sovelluksen versiotunniste JS-muuttujaan `APP_VERSION`, kun teet toiminnallisia muutoksia.
 4. **Mobiiliyhteensopivuus:** Varmista, että kosketuskomennot (`touchmove`, `touchstart`) ja painikkeiden klikkaukset eivät aiheuta kartan tahatonta siirtymistä (pan/zoom).
 5. **Kieli:** Käyttöliittymä ja käyttäjäviestintä ovat suomeksi.
 6. **Projektimuistio:** Pidä `PROJECT.md` ajan tasalla aina kun merkittäviä ominaisuuksia lisätään tai logiikkaa muutetaan.
@@ -73,7 +78,7 @@ Sovellus laskee efektiivisen suosituslyöntipituuden kaavalla:
 ## 5. ToDo-lista ja Tulevat Kehitysaskeleet
 
 ### 5.1 Mitä teemme seuraavaksi (Prioriteetti 1)
-- [ ] **Mobiilitestaus:** Varmistetaan kenttäkäytössä / puhelimella, että v6.59.0:ssa tehdyt CSS safe-area (`max()`) ja kartanäkymän tiivistys (`fitBounds`) istuvat täydellisesti ilman hukkaneliöitä ylä- ja alareunassa.
+- [ ] **Mobiilitestaus:** Varmistetaan kenttäkäytössä / puhelimella, että v6.64.0:ssa tehdyt CSS-muutokset ja kartanäkymän tiivistys (`fitBounds`) istuvat täydellisesti ilman hukkaneliöitä.
 - [ ] **Asetukset / Säädöt:** Tehdään kevyt asetusnäkymä tai -painike, josta käyttäjä voi säätää:
   - Par 3 -rajaetäisyyttä (nykyinen kiinteä `200m`).
   - Pelaajan omaa draivin oletuspituutta ja hajontaa.
