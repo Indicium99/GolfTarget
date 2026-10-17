@@ -91,14 +91,14 @@
 
     .top-header-banner {
       position: absolute;
-      top: calc(10px + env(safe-area-inset-top));
+      top: calc(2px + env(safe-area-inset-top));
       left: 50%;
       transform: translateX(-50%);
       z-index: 9999;
       background: rgba(15, 23, 42, 0.94);
       border: 1.5px solid #0284c7;
       border-radius: 10px;
-      padding: 6px 16px;
+      padding: 4px 14px;
       box-shadow: 0 4px 12px rgba(0,0,0,0.7);
       text-align: center;
       white-space: nowrap;
@@ -106,14 +106,14 @@
     }
 
     .top-banner-line1 {
-      font-size: 15.5px;
+      font-size: 15px;
       font-weight: bold;
       color: #ffffff;
     }
 
     .fixed-wind-badge {
       position: absolute;
-      top: calc(85px + env(safe-area-inset-top));
+      top: calc(60px + env(safe-area-inset-top));
       left: calc(50% + 100px);
       transform: translateX(-50%);
       z-index: 9999;
@@ -130,7 +130,7 @@
 
     .map-controls-left-group {
       position: absolute;
-      top: calc(10px + env(safe-area-inset-top));
+      top: calc(2px + env(safe-area-inset-top));
       left: 10px;
       z-index: 9999;
       display: flex;
@@ -200,7 +200,7 @@
 
     .map-controls-right {
       position: absolute;
-      top: calc(10px + env(safe-area-inset-top));
+      top: calc(2px + env(safe-area-inset-top));
       right: 10px;
       z-index: 9999;
       display: flex;
@@ -318,7 +318,7 @@
       left: 0;
       width: 100%;
       height: auto;
-      padding: 6px 12px calc(6px + env(safe-area-inset-bottom)) 12px;
+      padding: 4px 12px calc(2px + env(safe-area-inset-bottom)) 12px;
       box-sizing: border-box;
       background-color: rgba(15, 23, 42, 0.95);
       display: flex;
@@ -331,9 +331,9 @@
     .metrics-container {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 4px;
       background: #1e293b;
-      padding: 6px 12px;
+      padding: 5px 10px;
       border-radius: 8px;
       border: 1px solid #334155;
     }
@@ -342,7 +342,7 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 16.5px;
+      font-size: 16px;
       font-weight: bold;
       color: #ffffff;
     }
@@ -351,10 +351,10 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      font-size: 15.5px;
+      font-size: 15px;
       color: #ffffff;
       border-top: 1px dashed #475569;
-      padding-top: 4px;
+      padding-top: 3px;
     }
 
     .toggleable-factor {
@@ -452,7 +452,7 @@
     <div id="map"></div>
     <canvas id="sector-canvas"></canvas>
 
-    <div class="vertical-version-tag">v6.55.0</div>
+    <div class="vertical-version-tag">v6.56.0</div>
 
     <div class="top-header-banner" id="top-header">
       <div class="top-banner-line1">
@@ -530,7 +530,7 @@
   </div>
 
   <script>
-    const APP_VERSION = "v6.55.0";
+    const APP_VERSION = "v6.56.0";
     let googleApiCallCount = parseInt(localStorage.getItem("google_api_call_count") || "0");
     let googleApiBlocked = false;
 
@@ -754,7 +754,7 @@
       bounds.extend(greenPosition);
 
       map.fitBounds(bounds, {
-        padding: { top: 140, bottom: 180, left: 50, right: 50 },
+        padding: { top: 100, bottom: 120, left: 40, right: 40 },
         bearing: bearing,
         duration: 800
       });
@@ -1521,7 +1521,7 @@
 
       try {
         const response = await fetch(url, {
-          headers: { 'User-Agent': 'MasterGolfApp/6.55.0' }
+          headers: { 'User-Agent': 'MasterGolfApp/6.56.0' }
         });
         const results = await response.json();
 
